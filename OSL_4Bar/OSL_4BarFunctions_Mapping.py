@@ -75,7 +75,7 @@ def ankleTRMapping(devId,jointAng,calData):
     polyCoeff = [2.601481109902289e-6, 5.974073629756083e-5, 2.341789879637116e-04,-0.002269319912352, 0.067834298168660, 0.420479741974045, 42.270467940947240]
 
     # Calculate joint angle in degrees from vertical
-    jointAngDeg = (jointAng-calData.angExtJoint)/calData.bpdJoint
+    jointAngDeg = (jointAng-calData.angVertJoint)/calData.bpdJoint
 
     # Calculate desired transmission ratio based on current joint angle
     desTR = np.polyval(polyCoeff,jointAngDeg)
