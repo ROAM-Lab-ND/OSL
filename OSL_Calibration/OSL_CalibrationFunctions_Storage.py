@@ -2,8 +2,8 @@
 ##################################### OPEN #####################################
 This package holds the functions for dumping and loading calibration data to yaml files for future use with the Open Source Leg (OSL)
 
-Last Update: 20 May 2021
-Updates: Created
+Last Update: 26 May 2021
+Updates: Bug fixes with respect to imports
 #################################### CLOSE #####################################
 '''
 
@@ -12,16 +12,16 @@ Updates: Created
 from time import sleep, time, strftime
 import math
 import numpy as np
-import OSL_Constants
 import yaml
 
 # Actuator Modules (Most Start with fx)
 from flexsea import flexsea as fx
 from flexsea import fxEnums as fxe
+from OSL_Calibration import OSL_Constants as osl
 
 ############################# FUNCTION DEFINITIONS #############################
 
-def calDump(calData,dev):
+def calDump(calData,dev,cal):
 
     '''
     Function for dumping calibration data to the proper yaml file for future use
@@ -65,7 +65,7 @@ def calLoad(dev):
 def main(dev):
 
     try:
-        calLoad(dev)
+        calData = calLoad(dev)
 
     except:
         print('Failed to complete load test...')

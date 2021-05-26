@@ -2,8 +2,8 @@
 ##################################### OPEN #####################################
 This package is a wrapper for completing calibration of the Dephy actuators of the Open Source Leg (OSL).
 
-Last Update: 18 May 2021
-Updates: Created
+Last Update: 26 May 2021
+Updates: Bug fixes with respect to imports. Updated ankle calibration to only require one accelerometer calibration in the vertical position
 #################################### CLOSE #####################################
 '''
 
@@ -14,11 +14,11 @@ from flexsea import flexsea as fx
 from flexsea import fxUtils as fxu
 from flexsea import fxEnums as fxe
 
-from . import OSL_Constants
-from . import OSL_CalibrationFunctions_IMU
-from . import OSL_CalibrationFunctions_Angle
-from . import OSL_CalibrationFunctions_Homing
-from . import OSL_CalibrationFunctions_Storage
+from OSL_Calibration import OSL_Constants as osl
+from OSL_Calibration import OSL_CalibrationFunctions_IMU as imu
+from OSL_Calibration import OSL_CalibrationFunctions_Angle as ang
+from OSL_Calibration import OSL_CalibrationFunctions_Homing as home
+from OSL_Calibration import OSL_CalibrationFunctions_Storage as stor
 
 ############################# CALIBRATION CLASSES ##############################
 
@@ -167,15 +167,15 @@ class CalDataDual:
 def kneeCal(devId,FX,calData,cal=2):
 
     if cal != 1:
-        calData.gyro = gyroCal(devId,FX)
-        calData.xAccel,calData.yAccel = accelCal(devId,FX)
+        calData.gyro = imu.gyroCal(devId,FX)
+        calData.xAccel,calData.yAccel = imu.accelCal(devId,FX)
     if cal != 0:
-        calData.angExtMot,calData.angFlexMot,calData.bpdMot = angleCal(devId,FX,romJoint=120)
+        calData.angExtMot,calData.angFlexMot,calData.bpdMot = ang.angleCal(devId,FX,romJoint=120)
 
     storeCheck = input('Store calibration data in .yaml file as well? [y/n]: ')
 
     if storeCheck in 'yes':
-        calDump(calData,0)
+        stor.calDump(calData,0)
         print('Data stored in Knee_Cal.yaml...')
     else:
         print('Data not stored in Knee_Cal.yaml...')
@@ -184,22 +184,19 @@ def kneeCal(devId,FX,calData,cal=2):
 
 def ankleCal(devId,FX,calData,cal=2):
 
-    if cal != 1:
-        calData.gyro = gyroCal(devId,FX)
-        calData.xAccel,calData.yAccel = accelCal(devId,FX)
+    vertCheck = input('Stand Ankle Module Up, and Hit Enter To Continue...')
     if cal != 0:
-        calData.angExtMot,calData.angFlexMot,calData.bpdMot,calData.angExtJoint,calData.angFlexJoint,calData.bpdJoint = angleCal(devId,FX,romJoint=30)
-        calData.angVertJoint = calData.angFlexJoint + 20*calData.bpdJoint
-
-        vertCheck = input('Stand Ankle Module Up, and Hit Enter To Continue...')
-        calData.angVertMot = ankleHome(devId,FX,calData.angVertJoint)
+        calData.angExtMot,calData.angFlexMot,calData.bpdMot,calData.angExtJoint,calData.angFlexJoint,calData.bpdJoint = ang.angleCal(devId,FX,romJoint=30)
+        calData.angVertJoint = calData.angExtJoint + 20*calData.bpdJoint
+        calData.angVertMot = home.ankleHome(devId,FX,calData.angVertJoint)
     if cal != 1:
-        calData.xAccel,calData.yAccel = ankleVertAccelCal(devId,FX,calData.xAccel,calData.yAccel)
+        calData.gyro = imu.gyroCal(devId,FX)
+        calData.xAccel,calData.yAccel = imu.ankleVertAccelCal(devId,FX)
 
     storeCheck = input('Store calibration data in .yaml file as well? [y/n]: ')
 
     if storeCheck in 'yes':
-        calDump(calData,0)
+        stor.calDump(calData,1)
         print('Data stored in Ankle_Cal.yaml...')
     else:
         print('Data not stored in Ankle_Cal.yaml...')
@@ -250,8 +247,9 @@ def main(dev,cal):
             ankleCal(devId,FX,calData,cal)
     except:
         print('Error Occurred')
-        
+
         # Disable the controller, send 0 PWM
+        sleep(0.05)
         FX.send_motor_command(devId, fxe.FX_VOLTAGE, 0)
         sleep(0.1)
 

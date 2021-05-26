@@ -2,8 +2,8 @@
 ##################################### OPEN #####################################
 This package holds the functions called for homing the knee and ankle actuators of the Open Source Leg (OSL) to vertical orientation.
 
-Last Update: 19 May 2021
-Updates: Created
+Last Update: 26 May 2021
+Updates: Bug fixes with respect to imports
 #################################### CLOSE #####################################
 '''
 
@@ -12,12 +12,13 @@ Updates: Created
 from time import sleep, time, strftime
 import math
 import numpy as np
-import OSL_Constants
 import yaml
 
 # Actuator Modules (Most Start with fx)
 from flexsea import flexsea as fx
 from flexsea import fxEnums as fxe
+from OSL_Calibration import OSL_Constants as osl
+
 
 ################################# CALIBRATION ##################################
 
@@ -59,7 +60,7 @@ def kneeHome(devId,FX,volt=750):
         # If calculated difference is smaller than half a degree movement, the
         # limit has been reached
 
-        if -deg2count/2 <= angDiff <= deg2count/2:
+        if -osl.deg2count/2 <= angDiff <= osl.deg2count/2:
 
             # Set motor voltage to zero to stop the actuator
             FX.send_motor_command(devId, fxe.FX_VOLTAGE, 0)
@@ -87,7 +88,7 @@ def ankleHome(devId,FX,angVertJ,volt=-750,valReturn=1):
     actData = FX.read_device(devId)
     angCur = actData.mot_ang
 
-    if angCur < calData.angVertJoint:
+    if angCur < angVertJ:
 
         volt = -abs(volt)
     else:
@@ -118,7 +119,7 @@ def ankleHome(devId,FX,angVertJ,volt=-750,valReturn=1):
 
         # If calculated difference is smaller than half a degree movement, the
         # limit has been reached
-        if -deg2count/2 <= jointDiff <= deg2count/2:
+        if -osl.deg2count/2 <= jointDiff <= osl.deg2count/2:
 
             # Set motor voltage to zero to stop the motor
             FX.send_motor_command(devId, fxe.FX_VOLTAGE, 0)
@@ -179,6 +180,7 @@ def main(dev):
     except:
         print('Error Occurred')
 
+        sleep(0.05)
         # Disable the controller, send 0 PWM
         FX.send_motor_command(devId, fxe.FX_VOLTAGE, 0)
         sleep(0.1)

@@ -2,8 +2,8 @@
 ##################################### OPEN #####################################
 This package holds the functions called by OSL_Calibration_Package.py to calibrate the Angles in the Dephy actuator
 
-Last Update: 20 May 2021
-Updates: Added support for standalone use
+Last Update: 26 May 2021
+Updates: Bug fixes with respect to imports
 #################################### CLOSE #####################################
 '''
 
@@ -15,12 +15,12 @@ import math
 import numpy as np
 import scipy as sp
 import yaml
-import OSL_Constants
 
 # Actuator Modules (Most Start with fx)
 from flexsea import flexsea as fx
 from flexsea import fxEnums as fxe
-from OSL_Calibration_Package import CalDataSingle
+from OSL_Calibration import OSL_Constants as osl
+from OSL_Calibration import OSL_Calibration_Package as pac
 
 ################################# CALIBRATION ##################################
 def angleZero(devId,FX,volt):
@@ -68,11 +68,11 @@ def angleZero(devId,FX,volt):
 
         # If calculated difference is smaller than half a degree movement, the
         # limit has been reached
-        if -deg2count/2 <= angDiffM <= deg2count/2:
+        if -osl.deg2count/2 <= angDiffM <= osl.deg2count/2:
 
             # Print difference and ticks per degree to screen
             print('angDiff: ', angDiffM)
-            print('degToCount/2: ', deg2count/2)
+            print('degToCount/2: ', osl.deg2count/2)
 
             # Set motor voltage to zero to stop the actuator
             FX.send_motor_command(devId, fxe.FX_VOLTAGE, 0)
@@ -106,14 +106,14 @@ def angleCal(devId,FX,romJoint,volt=750):
     # Call to angleZero function for determining encoder value at full extension
     # Full extension is considered when the knee is straight to hard stop
     # Full extension is considered when the ankle is in plantar flexion
-    angExtM,angExtJ = angleZero(devId,FX,volt)
-    sleep(dt)
+    angExtM,angExtJ = angleZero(devId,FX,abs(volt))
+    sleep(osl.dt)
 
     # Call to angleZero function for determining encoder value at full flexion
     # Full flexion is considered when then knee is bent to hard stop
     # Full flexion is considered when the ankle is in dorsiflexion
-    angFlexM,angFlexJ = angleZero(devId,FX,-volt)
-    sleep(dt)
+    angFlexM,angFlexJ = angleZero(devId,FX,-abs(volt))
+    sleep(osl.dt)
 
     # Calculate the ticks per degree conversion value for the motor and joint
     bpdM = (angFlexM - angExtM)/romMot
@@ -142,10 +142,10 @@ def angleCal(devId,FX,romJoint,volt=750):
     # Calculate the calibrated value of the current angle, convert to degrees
     # Convert calibrated value of the current angle to radians
     motCur = (motVal - angExtM)/bpdM
-    motCurRad = np.multiply(motCur,deg2rad)
+    motCurRad = np.multiply(motCur,osl.deg2rad)
     if romJoint==30:
         jointCur = (jointVal - angExtJ)/bpdJ
-        jointCurRad = np.multiply(jointCur,deg2rad)
+        jointCurRad = np.multiply(jointCur,osl.deg2rad)
 
     sleep(0.3)
 
@@ -171,10 +171,10 @@ def angleCal(devId,FX,romJoint,volt=750):
 
         # Calculate calibrated encoder angle in degrees and radians
         motCur = (motVal - angExtM)/bpdM
-        motCurRad = np.multiply(motCur,deg2rad)
+        motCurRad = np.multiply(motCur,osl.deg2rad)
         if romJoint==30:
             jointCur = (jointVal - angExtJ)/bpdJ
-            jointCurRad = np.multiply(jointCur,deg2rad)
+            jointCurRad = np.multiply(jointCur,osl.deg2rad)
 
         # Calculate uncalibrated difference between tracking and current angle
         angDiffM = motVal - motPrev
@@ -188,7 +188,7 @@ def angleCal(devId,FX,romJoint,volt=750):
 
         # If calculated difference is smaller than half a degree movement, the
         # limit has been reached
-        if -deg2count/2 <= angDiffM <= deg2count/2:
+        if -osl.deg2count/2 <= angDiffM <= osl.deg2count/2:
 
             # Set motor voltage to zero to stop the motor
             FX.send_motor_command(devId, fxe.FX_VOLTAGE, 0)
@@ -207,11 +207,22 @@ def angleCal(devId,FX,romJoint,volt=750):
         return angExtM,angFlexM,bpdM
 
 
-def main(rangeOfMotion):
+def main(dev):
 
     '''
     For standalone calling of the angle calibration functions
     '''
+
+    try:
+        if dev == 0:
+            rangeOfMotion = 120
+        elif dev == 1:
+            rangeOfMotion = 30
+        else:
+            raise Exception('Invalid joint chosen')
+    except:
+        print('Error occurred')
+        raise
 
     #import numpy as np
     thisdir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -235,7 +246,7 @@ def main(rangeOfMotion):
     FX.start_streaming(devId,freq=100,log_en=False)
     sleep(0.1)
 
-    calData = CalDataSingle()
+    calData = pac.CalDataSingle(1,dev)
 
     try:
 
@@ -255,6 +266,7 @@ def main(rangeOfMotion):
         print('User Interruption Occurred')
 
         # Disable the controller, send 0 PWM
+        sleep(0.05)
         FX.send_motor_command(devId, fxe.FX_VOLTAGE, 0)
         sleep(0.1)
 
@@ -269,6 +281,7 @@ def main(rangeOfMotion):
         print('Error Occurred')
 
         # Disable the controller, send 0 PWM
+        sleep(0.05)
         FX.send_motor_command(devId, fxe.FX_VOLTAGE, 0)
         sleep(0.1)
 
@@ -280,5 +293,5 @@ def main(rangeOfMotion):
 
 if __name__ == '__main__':
 
-    device = int(input('Which joint is this for? (30 for Ankle, 120 for Knee): '))
-    main(device)
+    dev = int(input('Which joint is this for? (0 for Knee, 1 for Ankle): '))
+    main(dev)
