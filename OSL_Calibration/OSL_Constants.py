@@ -26,3 +26,7 @@ accelConv = 8192
 
 # Time Step
 dt = 0.001
+
+# Dephy Actuator Stiffness and Damping Parameters
+stiffK = ((0.096*deg2count)/np.sqrt(3))/(1000*2**9)
+dampB = ((0.096*deg2count)/np.sqrt(3))/(1000*1000)
