@@ -3,7 +3,7 @@
 This package holds the functions called for homing the knee and ankle actuators of the Open Source Leg (OSL) to vertical orientation.
 
 Last Update: 28 May 2021
-Updates: Updated ankleHome to ankleHomeJoint. Created ankleHomeMot. Updated actuator tick difference check to be abs(tickDiff)<=threshold rather than using -threshold <= tickDiff <= threshold.
+Updates: Updated ankleHome to ankleHomeJoint. Created ankleHomeMot. Updated actuator tick difference check to be abs(tickDiff)<=2*threshold rather than using -threshold <= tickDiff <= threshold. Updated default voltage to be slow enough for proper calibration.
 #################################### CLOSE #####################################
 '''
 
@@ -73,7 +73,7 @@ def kneeHome(devId,FX,volt=750):
             run = False
             print('Homing Complete')
 
-def ankleHomeJoint(devId,FX,angVertJ,volt=750,valReturn=1):
+def ankleHomeJoint(devId,FX,angVertJ,volt=400,valReturn=1):
 
     '''
     This function is used to return the ankle actuator angle to the vertical degree mark in a safe manner.  Returns vertical angle motor value (ticks).
@@ -119,7 +119,7 @@ def ankleHomeJoint(devId,FX,angVertJ,volt=750,valReturn=1):
 
         # If calculated difference is smaller than half a degree movement, the
         # limit has been reached
-        if abs(jointDiff) <= osl.deg2count/2:
+        if abs(jointDiff) <= 2*osl.deg2count:
 
             # Set motor voltage to zero to stop the motor
             FX.send_motor_command(devId, fxe.FX_VOLTAGE, 0)
@@ -134,7 +134,7 @@ def ankleHomeJoint(devId,FX,angVertJ,volt=750,valReturn=1):
     if valReturn:
         return angVertM
 
-def ankleHomeMot(devId,FX,angVertM,volt=750,valReturn=1):
+def ankleHomeMot(devId,FX,angVertM,volt=400,valReturn=1):
 
     '''
     This function is used to return the ankle actuator angle to the vertical degree mark in a safe manner. Returns vertical angle joint value (ticks).
@@ -182,7 +182,7 @@ def ankleHomeMot(devId,FX,angVertM,volt=750,valReturn=1):
 
         # If calculated difference is smaller than half a degree movement, the
         # limit has been reached
-        if abs(motDiff) <= osl.deg2count/2:
+        if abs(motDiff) <= 2*osl.deg2count:
 
             # Set motor voltage to zero to stop the motor
             FX.send_motor_command(devId, fxe.FX_VOLTAGE, 0)
