@@ -33,7 +33,7 @@ def anklePosMapping(devId,jointDesDeg,calData):
     '''
 
     # Polyfit coefficients
-    polyCoef = [6.90400631621864e-06, -0.000144043436547594, 0.002139595852316, -0.010657469264743, 3.42861224487564, -3.00193673363941e-14]
+    polyCoef = [6.904006316218462e-6, 2.855672135787040e-5, 9.847287004188480e-4, 0.008459960933132, 3.432060542616289, 1.088851620694406e-15]
 
     # Calculate desired motor position in degrees
     motDesDeg = np.polyval(polyCoef,jointDesDeg)
@@ -58,7 +58,7 @@ def ankleTRMappingJoint(devId,jointAng,calData):
 
     # Polyfit coefficients
     # Polyfit was conducted with the ankle angle already shifted to [-20,10] range
-    polyCoeff = [2.601481109902300e-06, -6.818559145155934e-05, 4.072085146360515e-04, 0.001579421711307, 0.064660231016916,-0.492062230425264, 42.517478966840436]
+    polyCoeff = [2.601481109902332e-6, 9.858841845509533e-6, -3.218758554395808e-4, -8.191030841061497e-4, 0.088589729972813, 0.312298762934481, 41.953174794753980]
 
     # Calculate joint angle in degrees from vertical
     jointAngDeg = (jointAng - calData.angVertJoint)/calData.bpdJoint
@@ -83,7 +83,7 @@ def ankleTRMappingMot(devId,motAng,calData):
 
     # Polyfit coefficients
     # Polyfit was conducted with the ankle angle already shifted to [-20,10] range
-    polyCoeff = [1.906223726201309e-10, -2.323035971161657e-08, 1.445394668235981e-06, -4.217995699735862e-05, 0.006072376026348, -0.115880735295439, 42.477096278915720]
+    polyCoeff = [1.906223726201300e-10, -3.700386409901678e-9, 2.957465762186836e-7, 7.791368079535717e-6, 0.005526776998495, 0.075173504601046, 42.152801658472660]
 
     # Calculate motor angle in degrees from vertical
     motAngDeg = (motAng - calData.angVertMot)/calData.bpdMot
