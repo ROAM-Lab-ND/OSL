@@ -2,8 +2,8 @@
 ##################################### OPEN #####################################
 This package holds the functions called for homing the knee and ankle actuators of the Open Source Leg (OSL) to vertical orientation.
 
-Last Update: 26 May 2021
-Updates: Bug fixes with respect to imports
+Last Update: 28 May 2021
+Updates: Updated ankleHome to ankleHomeJoint. Created ankleHomeMot. Updated actuator tick difference check to be abs(tickDiff)<=threshold rather than using -threshold <= tickDiff <= threshold.
 #################################### CLOSE #####################################
 '''
 
@@ -60,7 +60,7 @@ def kneeHome(devId,FX,volt=750):
         # If calculated difference is smaller than half a degree movement, the
         # limit has been reached
 
-        if -osl.deg2count/2 <= angDiff <= osl.deg2count/2:
+        if abs(angDiff) <= osl.deg2count/2:
 
             # Set motor voltage to zero to stop the actuator
             FX.send_motor_command(devId, fxe.FX_VOLTAGE, 0)
@@ -73,7 +73,7 @@ def kneeHome(devId,FX,volt=750):
             run = False
             print('Homing Complete')
 
-def ankleHome(devId,FX,angVertJ,volt=-750,valReturn=1):
+def ankleHomeJoint(devId,FX,angVertJ,volt=750,valReturn=1):
 
     '''
     This function is used to return the ankle actuator angle to the vertical degree mark in a safe manner.  Returns vertical angle motor value (ticks).
@@ -86,14 +86,14 @@ def ankleHome(devId,FX,angVertJ,volt=-750,valReturn=1):
 
     # Grab Current Encoder Value
     actData = FX.read_device(devId)
-    angCur = actData.mot_ang
+    angCur = actData.ank_ang
 
     if angCur < angVertJ:
 
-        volt = -abs(volt)
+        volt = abs(volt)
     else:
 
-        volt = abs(volt)
+        volt = -abs(volt)
 
 
     # Start running motor at inputted voltage
@@ -119,7 +119,7 @@ def ankleHome(devId,FX,angVertJ,volt=-750,valReturn=1):
 
         # If calculated difference is smaller than half a degree movement, the
         # limit has been reached
-        if -osl.deg2count/2 <= jointDiff <= osl.deg2count/2:
+        if abs(jointDiff) <= osl.deg2count/2:
 
             # Set motor voltage to zero to stop the motor
             FX.send_motor_command(devId, fxe.FX_VOLTAGE, 0)
@@ -134,6 +134,69 @@ def ankleHome(devId,FX,angVertJ,volt=-750,valReturn=1):
     if valReturn:
         return angVertM
 
+def ankleHomeMot(devId,FX,angVertM,volt=750,valReturn=1):
+
+    '''
+    This function is used to return the ankle actuator angle to the vertical degree mark in a safe manner. Returns vertical angle joint value (ticks).
+
+    NOTE: THIS SHOULD NOT BE CALLED BEFORE COMPLETING THE ANGLE CALIRATION FOR THE ANKLE. THE CALIBRATION FUNCTIONS CAN BE FOUND IN OSL_CalibrationFunctions_Angle.py
+    '''
+
+    print('Running Actuator...')
+    sleep(0.3)
+
+    # Grab Current Encoder Value
+    actData = FX.read_device(devId)
+    angCur = actData.mot_ang
+
+    if angCur < angVertM:
+
+        volt = abs(volt)
+
+    else:
+
+        volt = -abs(volt)
+
+
+    # Start running motor at inputted voltage
+    FX.send_motor_command(devId, fxe.FX_VOLTAGE, volt)
+
+    sleep(0.05)
+
+    while run:
+
+        # Set motor to twice the calibration voltage for quicker run time
+        FX.send_motor_command(devId,fxe.FX_VOLTAGE,volt)
+
+        # Grab encoder angle value
+        actData = FX.read_device(devId)
+        motVal = actData.mot_ang
+
+        # Calculate uncalibrated difference between tracking and current angle
+        motDiff = motVal - angVertM
+
+        # Print current calibrated angle value in degrees and radians to screen
+        print('%-15s %-7f' % ('Current Motor:',motVal))
+
+        sleep(0.05)
+
+        # If calculated difference is smaller than half a degree movement, the
+        # limit has been reached
+        if abs(motDiff) <= osl.deg2count/2:
+
+            # Set motor voltage to zero to stop the motor
+            FX.send_motor_command(devId, fxe.FX_VOLTAGE, 0)
+
+            # Grab encoder angle value (need uncalibrated value angVal for later)
+            actData = FX.read_device(devId)
+            angVertJ = actData.ank_ang
+
+            # Set boolean to exit the loop
+            run = False
+            print('Vertical Homing Complete')
+
+    if valReturn:
+        return angVertJ
 
 def main(dev):
 

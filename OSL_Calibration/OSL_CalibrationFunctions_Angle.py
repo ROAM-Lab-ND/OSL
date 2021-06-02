@@ -2,8 +2,8 @@
 ##################################### OPEN #####################################
 This package holds the functions called by OSL_Calibration_Package.py to calibrate the Angles in the Dephy actuator
 
-Last Update: 26 May 2021
-Updates: Bug fixes with respect to imports
+Last Update: 28 May 2021
+Updates: Flipped difference calculation between extension hard stop and flexion hard stop to generate positive bits per degree ratio values. Extension hard stop will always have a higher encoder tick reading than flexion hard stop.
 #################################### CLOSE #####################################
 '''
 
@@ -116,8 +116,8 @@ def angleCal(devId,FX,romJoint,volt=750):
     sleep(osl.dt)
 
     # Calculate the ticks per degree conversion value for the motor and joint
-    bpdM = (angFlexM - angExtM)/romMot
-    bpdJ = (angFlexJ - angExtJ)/romJoint
+    bpdM = (angExtM - angFlexM)/romMot
+    bpdJ = (angExtJ - angFlexJ)/romJoint
 
     # Print ticks per degree ratio to screen
     print('Bit to Degree Motor Ratio: ', bpdM)
@@ -141,10 +141,10 @@ def angleCal(devId,FX,romJoint,volt=750):
 
     # Calculate the calibrated value of the current angle, convert to degrees
     # Convert calibrated value of the current angle to radians
-    motCur = (motVal - angExtM)/bpdM
+    motCur = (angExtM - motVal)/bpdM
     motCurRad = np.multiply(motCur,osl.deg2rad)
     if romJoint==30:
-        jointCur = (jointVal - angExtJ)/bpdJ
+        jointCur = (angExtJ - jointVal)/bpdJ
         jointCurRad = np.multiply(jointCur,osl.deg2rad)
 
     sleep(0.3)
@@ -170,10 +170,10 @@ def angleCal(devId,FX,romJoint,volt=750):
         jointVal = actData.ank_ang
 
         # Calculate calibrated encoder angle in degrees and radians
-        motCur = (motVal - angExtM)/bpdM
+        motCur = (angExtM - motVal)/bpdM
         motCurRad = np.multiply(motCur,osl.deg2rad)
         if romJoint==30:
-            jointCur = (jointVal - angExtJ)/bpdJ
+            jointCur = (angExtJ - jointVal)/bpdJ
             jointCurRad = np.multiply(jointCur,osl.deg2rad)
 
         # Calculate uncalibrated difference between tracking and current angle

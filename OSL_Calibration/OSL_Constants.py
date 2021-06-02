@@ -4,8 +4,8 @@ This script houses the parameters and conversion factors that will be used with 
 
 The parameters stored in this script pertain to various factors of the control scheme, ranging from general conversion units to sensor specifics.
 
-Last Update: 18 May 2021
-Updates: Created
+Last Update: 26 May 2021
+Updates: Added stiffness and damping parameters
 #################################### CLOSE #####################################
 '''
 

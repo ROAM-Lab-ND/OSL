@@ -2,8 +2,8 @@
 ##################################### OPEN #####################################
 This package is a wrapper for completing calibration of the Dephy actuators of the Open Source Leg (OSL).
 
-Last Update: 26 May 2021
-Updates: Bug fixes with respect to imports. Updated ankle calibration to only require one accelerometer calibration in the vertical position
+Last Update: 2 June 2021
+Updates: Updated ankleCalMot to manually determine the motor tick value for vertical orientation prior to homing.
 #################################### CLOSE #####################################
 '''
 
@@ -19,6 +19,7 @@ from OSL_Calibration import OSL_CalibrationFunctions_IMU as imu
 from OSL_Calibration import OSL_CalibrationFunctions_Angle as ang
 from OSL_Calibration import OSL_CalibrationFunctions_Homing as home
 from OSL_Calibration import OSL_CalibrationFunctions_Storage as stor
+from OSL_FourBar import OSL_4BarFunctions_Mapping as four
 
 ############################# CALIBRATION CLASSES ##############################
 
@@ -167,38 +168,104 @@ class CalDataDual:
 def kneeCal(devId,FX,calData,cal=2):
 
     if cal != 1:
+
+        # Z-Axis Gyroscope Calibration
         calData.gyro = imu.gyroCal(devId,FX)
+
+        # X-Axis, Y-Axis Calibration
         calData.xAccel,calData.yAccel = imu.accelCal(devId,FX)
+
     if cal != 0:
+
+        # Motor Hardstops and Bits Per Degree Calculation
         calData.angExtMot,calData.angFlexMot,calData.bpdMot = ang.angleCal(devId,FX,romJoint=120)
 
     storeCheck = input('Store calibration data in .yaml file as well? [y/n]: ')
 
     if storeCheck in 'yes':
+
+        # Store calData in .yaml file for future pulls
         stor.calDump(calData,0)
         print('Data stored in Knee_Cal.yaml...')
+
     else:
+
         print('Data not stored in Knee_Cal.yaml...')
 
     return calData
 
-def ankleCal(devId,FX,calData,cal=2):
+def ankleCalAnk(devId,FX,calData,cal=2):
 
+    # Check that ankle is upright
     vertCheck = input('Stand Ankle Module Up, and Hit Enter To Continue...')
+
     if cal != 0:
+
+        # Motor/Joint Hardstops and Bits Per Degree Calculations
         calData.angExtMot,calData.angFlexMot,calData.bpdMot,calData.angExtJoint,calData.angFlexJoint,calData.bpdJoint = ang.angleCal(devId,FX,romJoint=30)
-        calData.angVertJoint = calData.angExtJoint + 20*calData.bpdJoint
-        calData.angVertMot = home.ankleHome(devId,FX,calData.angVertJoint)
+
+        # Joint Vertical Orientation Calculation
+        calData.angVertJoint = calData.angExtJoint + 15*calData.bpdJoint
+
+        # Motor Vertical Orientation Calculation
+        calData.angVertMot = home.ankleHomeJoint(devId,FX,calData.angVertJoint)
+
     if cal != 1:
+
+        # Z-Axis Gyroscope Calculation
         calData.gyro = imu.gyroCal(devId,FX)
+
+        # X-Axis, Y-Axis Calibration
         calData.xAccel,calData.yAccel = imu.ankleVertAccelCal(devId,FX)
 
     storeCheck = input('Store calibration data in .yaml file as well? [y/n]: ')
 
     if storeCheck in 'yes':
+
+        # Store calData in .yaml file for future pulls
         stor.calDump(calData,1)
         print('Data stored in Ankle_Cal.yaml...')
+
     else:
+
+        print('Data not stored in Ankle_Cal.yaml...')
+
+    return calData
+
+def ankleCalMot(devId,FX,calData,cal=2):
+
+    # Check that ankle is upright
+    vertCheck = input('Stand Ankle Module Up, and Hit Enter To Continue...')
+
+    if cal != 0:
+
+        # Motor/Joint Hardstops and Bits Per Degree Calculations
+        calData.angExtMot,calData.angFlexMot,calData.bpdMot,calData.angExtJoint,calData.angFlexJoint,calData.bpdJoint = ang.angleCal(devId,FX,romJoint=30)
+
+        # Joint Vertical Orientation Calculation
+        calData.angVertMot = calData.angExtMot - 67*calData.bpdMot
+
+        # Motor Vertical Orientation Calculation
+        calData.angVertJoint = home.ankleHomeMot(devId,FX,calData.angVertMot)
+
+    if cal != 1:
+
+        # Z-Axis Gyroscope Calculation
+        calData.gyro = imu.gyroCal(devId,FX)
+
+        # X-Axis, Y-Axis Calibration
+        calData.xAccel,calData.yAccel = imu.ankleVertAccelCal(devId,FX)
+
+    storeCheck = input('Store calibration data in .yaml file as well? [y/n]: ')
+
+    if storeCheck in 'yes':
+
+        # Store calData in .yaml file for future pulls
+        stor.calDump(calData,1)
+        print('Data stored in Ankle_Cal.yaml...')
+
+    else:
+
         print('Data not stored in Ankle_Cal.yaml...')
 
     return calData
@@ -231,9 +298,10 @@ def main(dev,cal):
     baudRate=int(baudRate)
     debugLvl=6
 
-    # Connect to actuator and open data stream
+    # Grab Class Object for Dephy Actuator Functions
     FX = fx.FlexSEA()
 
+    # Open device and begin streaming data
     devId = FX.open(port,baudRate,debugLvl)
     FX.start_streaming(devId,freq=100,log_en=False)
     sleep(0.1)
