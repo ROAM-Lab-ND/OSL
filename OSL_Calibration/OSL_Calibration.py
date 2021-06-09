@@ -2,8 +2,9 @@
 ##################################### OPEN #####################################
 This script allows for testing the calibration of the ankle or knee of the Open Source Leg (OSL) without having to move the calibration yaml file locations
 
-Last Update: 26 May 2021
-Updates: Bug fixes with respect to imports
+Last Update: 8 June 2021
+Updates:
+    - Updated import file path location for OSL_Calibration
 #################################### CLOSE #####################################
 '''
 
@@ -21,8 +22,8 @@ from flexsea import flexsea as fx
 from flexsea import fxUtils as fxu
 from flexsea import fxEnums as fxe
 
-from OSL_Calibration import OSL_Constants as osl
-from OSL_Calibration import OSL_Calibration_Package as pac
+from OSL_Modules.OSL_Calibration import OSL_Constants as osl
+from OSL_Modules.OSL_Calibration import OSL_Calibration_Package as pac
 
 #################################### SETUP #####################################
 # Find directory
@@ -44,17 +45,17 @@ devId = FX.open(port,baudRate,debugLvl)
 FX.start_streaming(devId,freq=100,log_en=False)
 sleep(0.1)
 
+calData = osl.CalDataSingle()
+
 dev = int(input('Which device do you want to calibrate? (0 for Knee, 1 for Ankle): '))
 cal = int(input('What do you want to calibrate? (0 for IMU, 1 for Angle, 2 for Both): '))
-
-calData = pac.CalDataSingle(cal,dev)
 
 try:
 
     if dev == 0:
         pac.kneeCal(devId,FX,calData,cal)
     elif dev == 1:
-        pac.ankleCal(devId,FX,calData,cal)
+        pac.ankleCalMot(devId,FX,calData,cal)
     else:
         raise Exception('Invalid device chosen...')
 
@@ -67,24 +68,11 @@ try:
     FX.close(devId)
     sleep(0.1)
 
-except KeyboardInterrupt:
-
-        print('User Interruption Occurred')
-
-        # Disable the controller, send 0 PWM
-        FX.send_motor_command(devId, fxe.FX_VOLTAGE, 0)
-        sleep(0.1)
-
-        FX.stop_streaming(devId)
-        sleep(0.2)
-        FX.close(devId)
-        sleep(0.1)
-        print("Graceful Exit Complete")
-
-except Exception as e:
-    print(e)
+except Exception as error:
+    print(error)
 
     # Disable the controller, send 0 PWM
+    sleep(0.05)
     FX.send_motor_command(devId, fxe.FX_VOLTAGE, 0)
     sleep(0.1)
 
@@ -95,4 +83,3 @@ except Exception as e:
     print("Graceful Exit Complete")
 
 print('Script Complete')
-
