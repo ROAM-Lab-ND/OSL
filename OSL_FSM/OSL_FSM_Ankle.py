@@ -58,10 +58,10 @@ try:
             print('Invalid option chosen, running calibration sequence as back up...')
 
 
-            calData = pac.CalDataSingle()
-            calData = pac.ankleCalMot(devId,FX,calData)
+        calData = pac.CalDataSingle()
+        calData = pac.ankleCalMot(devId,FX,calData)
 
-            print('Calibration successful...')
+        print('Calibration successful...')
 
 except Exception as error:
 
