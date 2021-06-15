@@ -1,0 +1,8 @@
+# OSL_Actuator_ID.yaml
+#
+# Used for proper loading of the actuators for the knee-ankle configuration
+#
+# This is used to confirm that the devIDs loaded from flexSEA.open() are properly chosen. Populate devId with the KNEE devId, followed by the ANKLE devId
+devId:
+  - 19048
+  - 14449

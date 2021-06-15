@@ -1,0 +1,48 @@
+##################################### OPEN #####################################
+This file contains a high level overview of the file structure for the Open Source Leg (OSL) work conducted in the ROAM Lab at the University of Notre Dame.
+
+NOTE: This file is a living document that will go through multiple iterations as scripts are created and edited. The most recent file structure will be outlined in this document.
+
+Last Update: 26 May 2021
+Updates: Created
+#################################### CLOSE #####################################
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% FORMAT %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+DIRECTORY
+|_ filename (Import Alias)
+|  |_ Functions
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% STRUCTURE %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+CALIBRATION
+|_ OSL_Calibration_Package (pac)
+|  |_ Knee Calibration
+|  |_ Ankle Calibration
+|_ OSL_CalibrationFunctions_IMU (imu)
+|  |_ Gyroscope Calibration
+|  |_ Accelerometer Calibration
+|  |_ Vertical Orientation Accelerometer Calibration
+|_ OSL_CalibrationFunctions_Angle (ang)
+|  |_ Angle Zero Calibration
+|  |_ Angle Calibration
+|_ OSL_CalibrationFunctions_Homing (home)
+|  |_ Knee Homing
+|  |_ Ankle Homing
+|_ OSL_CalibrationFunctions_Storage (stor)
+|  |_ Calibration Dump to File
+|  |_ Calibration Load from File
+|_ OSL_Constants (osl)
+
+4BAR
+|_ OSL_4BarFunctions_Mapping (four)- I/O Position
+|  |_ Position Mapping
+|  |_ Transmission Ratio Mapping
+
+TORQUE
+|_OSL_TorqueFunctions_StiffnessDamping (tor)
+|  |_ Motor Stiffness Computation
+|  |_ Motor Damping Computation
+
+FORCE
+|_ OSL_ForceFunctions_Transition (TBD)
+|  |_ Force Sensor Transition On
+|  |_ Force Sensor Transition Off
