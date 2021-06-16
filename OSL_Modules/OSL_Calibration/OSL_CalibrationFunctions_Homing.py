@@ -45,7 +45,7 @@ def kneeHome(devId,FX,volt=750):
 
     while run:
 
-        sleep(0.1)
+        sleep(0.01)
 
         # Set Tracking Angle to Previously Measured Angle
         angPrev = angCur
@@ -101,7 +101,7 @@ def ankleHomeJoint(devId,FX,angVertJ,volt=400,valReturn=1):
 
     while run:
 
-        sleep(0.1)
+        sleep(0.01)
 
         # Set motor to twice the calibration voltage for quicker run time
         FX.send_motor_command(devId,fxe.FX_VOLTAGE,volt)
@@ -165,6 +165,8 @@ def ankleHomeMot(devId,FX,angVertM,volt=400,valReturn=1):
 
     while run:
 
+        sleep(0.01)
+
         # Set motor to twice the calibration voltage for quicker run time
         FX.send_motor_command(devId,fxe.FX_VOLTAGE,volt)
 
@@ -177,8 +179,6 @@ def ankleHomeMot(devId,FX,angVertM,volt=400,valReturn=1):
 
         # Print current calibrated angle value in degrees and radians to screen
         print('%-15s %-7f %-7f' % ('Current Motor:',motVal,motDiff))
-
-        sleep(0.05)
 
         # If calculated difference is smaller than half a degree movement, the
         # limit has been reached

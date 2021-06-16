@@ -2,11 +2,9 @@
 ##################################### OPEN #####################################
 This package holds the functions called by OSL_Calibration_Package.py to calibrate the Angles in the Dephy actuator
 
-Last Update: 8 June 2021
+Last Update: 16 June 2021
 Updates:
-    - Updated main() to use updated class object structure
-    - Updated main() to use finally tag for proper syntax of closing actuator stream
-    - Updated imports
+    - Updated bpdJ calculation to set value to -2 if no external encoder is attached to avoid issues with division by zero.
 #################################### CLOSE #####################################
 '''
 
@@ -20,8 +18,8 @@ import numpy as np
 # Actuator Modules (Most Start with fx)
 from flexsea import flexsea as fx
 from flexsea import fxEnums as fxe
-from OSL_Modules.OSL_Calibration import OSL_Constants as osl
-from OSL_Modules.OSL_Calibration import OSL_Calibration_Package as pac
+from OSL_Modules.OSL_Calibration_Dual import OSL_Constants as osl
+from OSL_Modules.OSL_Calibration_Dual import OSL_Calibration_Package as pac
 
 ################################# CALIBRATION ##################################
 def angleZero(devId,FX,volt):
@@ -77,13 +75,13 @@ def angleZero(devId,FX,volt):
         angDiffMAnk = motCurAnk - motPrevAnk
         angDiffJAnk = jointCurAnk - jointPrevAnk
 
-        print(motCurKnee,angDiffMKnee,jointCurKnee,angDiffJKnee,motCurAnk,angDiffMAnk,jointCurAnkangDiffJAnk)
+        print(motCurKnee,angDiffMKnee,jointCurKnee,angDiffJKnee,motCurAnk,angDiffMAnk,jointCurAnk,angDiffJAnk)
 
         sleep(0.1)
 
         # If calculated difference is smaller than half a degree movement, the
         # limit has been reached
-        if (abs(angDiffMKnee) <= deg2count/2) and (runKnee):
+        if (abs(angDiffMKnee) <= osl.deg2count/2) and (runKnee):
 
             # Set motor voltage to zero to stop the actuator
             FX.send_motor_command(devId[0], fxe.FX_VOLTAGE, 0)
@@ -96,7 +94,7 @@ def angleZero(devId,FX,volt):
             # Set boolean to exit loop
             runKnee = False
 
-        if (abs(angDiffMAnk) <= deg2count/2) and (runAnk):
+        if (abs(angDiffMAnk) <= osl.deg2count/2) and (runAnk):
 
             # Set motor voltage to zero to stop the actuator
             FX.send_motor_command(devId[1], fxe.FX_VOLTAGE, 0)
@@ -109,7 +107,8 @@ def angleZero(devId,FX,volt):
             # Set boolean to exit loop
             runAnk = False
 
-        if (not runKnee) and (not runAnk)
+        if (not runKnee) and (not runAnk):
+
             run = False
             motFinal = [motFinalKnee,motFinalAnk]
             jointFinal = [jointFinalKnee,jointFinalAnk]
@@ -148,7 +147,16 @@ def angleCal(devId,FX,volt=750):
 
     # Calculate the ticks per degree conversion value for the motor and joint
     bpdM = ((np.asarray(angExtM) - np.asarray(angFlexM))/np.asarray(romMot)).tolist()
+
     bpdJ = ((np.asarray(angExtJ) - np.asarray(angFlexJ))/np.asarray(romJoint)).tolist()
+
+    if bpdJ[0] == 0:
+
+        bpdJ[0] = -2
+
+    if bpdJ[1] == 0:
+
+        bpdJ[1] = -2
 
     # Print ticks per degree ratio to screen
     print('Bit to Degree Motor Ratio: ', bpdM)
@@ -183,17 +191,14 @@ def angleCal(devId,FX,volt=750):
     # Convert calibrated value of the current angle to radians
     motCur = (np.asarray(angExtM) - np.asarray(motVal))/np.asarray(bpdM)
     motCurRad = np.multiply(motCur,osl.deg2rad)
-    if 0 not in bpdJ:
-        jointCur = (np.asarray(angExtJ) - np.asarray(jointVal))/np.asarray(bpdJ)
-        jointCurRad = np.multiply(jointCur,osl.deg2rad)
+
+    jointCur = (np.asarray(angExtJ) - np.asarray(jointVal))/np.asarray(bpdJ)
+    jointCurRad = np.multiply(jointCur,osl.deg2rad)
 
     sleep(0.3)
 
     # Print calibrated angle in degrees and radians to screen
-    if 0 not in bpdJ:
-        print('%-15s %-7f %-7f %-15s %-7f %-7f' % ('Knee Mot/Joint',motCur[0],jointCur[0],'Ankle Mot/Joint',motCur[1],jointCur[1])
-    else:
-        print('%-15s %-7f %-15s %-7f' % ('Knee Mot:',motCur[0],'Ankle Mot:',motCur[1]))
+    print('%-15s %-7f %-7f %-15s %-7f %-7f' % ('Knee Mot/Joint',motCur[0],jointCur[0],'Ankle Mot/Joint',motCur[1],jointCur[1]))
 
     # Set motor to twice the calibration voltage for quicker run time
     FX.send_motor_command(devId[0],fxe.FX_VOLTAGE,abs(volt)*2)
@@ -221,36 +226,21 @@ def angleCal(devId,FX,volt=750):
         # Convert calibrated value of the current angle to radians
         motCur = (np.asarray(angExtM) - np.asarray(motVal))/np.asarray(bpdM)
         motCurRad = np.multiply(motCur,osl.deg2rad)
-        if 0 not in bpdJ:
-            jointCur = (np.asarray(angExtJ) - np.asarray(jointVal))/np.asarray(bpdJ)
-            jointCurRad = np.multiply(jointCur,osl.deg2rad)
+
+        jointCur = (np.asarray(angExtJ) - np.asarray(jointVal))/np.asarray(bpdJ)
+        jointCurRad = np.multiply(jointCur,osl.deg2rad)
 
         # Calculate Difference between Tracking Angle and Current Angle
         angDiffM = np.asarray(motVal) - np.asarray(motPrev)
 
-        print(motCurKnee,angDiffMKnee,jointCurKnee,angDiffJKnee,motCurAnk,angDiffMAnk,jointCurAnkangDiffJAnk)
-
-        # Calculate calibrated encoder angle in degrees and radians
-        motCur = (angExtM - motVal)/bpdM
-        motCurRad = np.multiply(motCur,osl.deg2rad)
-        if bpdJ != 0:
-            jointCur = (angExtJ - jointVal)/bpdJ
-            jointCurRad = np.multiply(jointCur,osl.deg2rad)
-
-        # Calculate uncalibrated difference between tracking and current angle
-        angDiffM = motVal - motPrev
-
         # Print calibrated angle in degrees and radians to screen
-        if 0 not in bpdJ:
-            print('%-15s %-7f %-7f %-15s %-7f %-7f' % ('Knee Mot/Joint',motCur[0],jointCur[0],'Ankle Mot/Joint',motCur[1],jointCur[1])
-        else:
-            print('%-15s %-7f %-15s %-7f' % ('Knee Mot:',motCur[0],'Ankle Mot:',motCur[1]))
+        print('%-15s %-7f %-7f %-15s %-7f %-7f' % ('Knee Mot/Joint',motCur[0],jointCur[0],'Ankle Mot/Joint',motCur[1],jointCur[1]))
 
         sleep(0.05)
 
         # If calculated difference is smaller than half a degree movement, the
         # limit has been reached
-        if (abs(angDiffM[0]) <= deg2count/2) and (runKnee):
+        if (abs(angDiffM[0]) <= osl.deg2count/2) and (runKnee):
 
             # Set motor voltage to zero to stop the actuator
             FX.send_motor_command(devId[0], fxe.FX_VOLTAGE, 0)
@@ -258,7 +248,7 @@ def angleCal(devId,FX,volt=750):
             # Set boolean to exit loop
             runKnee = False
 
-        if (abs(angDiffM[1]) <= deg2count/2) and (runAnk):
+        if (abs(angDiffM[1]) <= osl.deg2count/2) and (runAnk):
 
             # Set motor voltage to zero to stop the actuator
             FX.send_motor_command(devId[1], fxe.FX_VOLTAGE, 0)
@@ -266,7 +256,8 @@ def angleCal(devId,FX,volt=750):
             # Set boolean to exit loop
             runAnk = False
 
-        if (not runKnee) and (not runAnk)
+        if (not runKnee) and (not runAnk):
+
             run = False
 
     print('Angle Calibration Complete.')

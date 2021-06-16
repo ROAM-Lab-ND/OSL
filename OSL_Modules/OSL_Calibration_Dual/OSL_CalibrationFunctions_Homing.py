@@ -20,7 +20,7 @@ import yaml
 # Actuator Modules (Most Start with fx)
 from flexsea import flexsea as fx
 from flexsea import fxEnums as fxe
-from OSL_Modules.OSL_Calibration import OSL_Constants as osl
+from OSL_Modules.OSL_Calibration_Dual import OSL_Constants as osl
 
 ################################# CALIBRATION ##################################
 
@@ -47,7 +47,7 @@ def kneeHome(devId,FX,volt=750):
 
     while run:
 
-        sleep(0.1)
+        sleep(0.01)
 
         # Set Tracking Angle to Previously Measured Angle
         angPrev = angCur
@@ -101,12 +101,11 @@ def ankleHomeJoint(devId,FX,angVertJ,volt=400,valReturn=1):
     # Start running motor at inputted voltage
     FX.send_motor_command(devId, fxe.FX_VOLTAGE, volt)
 
+    run = True
+
     while run:
 
-        sleep(0.1)
-
-        # Set motor to twice the calibration voltage for quicker run time
-        FX.send_motor_command(devId,fxe.FX_VOLTAGE,volt)
+        sleep(0.01)
 
         # Grab encoder angle value
         actData = FX.read_device(devId)
@@ -137,7 +136,7 @@ def ankleHomeJoint(devId,FX,angVertJ,volt=400,valReturn=1):
     if valReturn:
         return angVertM
 
-def ankleHomeMot(devId,FX,angVertM,volt=400,valReturn=1):
+def ankleHomeMot(devId,FX,angVertM,volt=350,valReturn=1):
 
     '''
     This function is used to return the ankle actuator angle to the vertical degree mark in a safe manner. Returns vertical angle joint value (ticks).
@@ -166,10 +165,11 @@ def ankleHomeMot(devId,FX,angVertM,volt=400,valReturn=1):
 
     sleep(0.05)
 
+    run = True
+
     while run:
 
-        # Set motor to twice the calibration voltage for quicker run time
-        FX.send_motor_command(devId,fxe.FX_VOLTAGE,volt)
+        sleep(0.01)
 
         # Grab encoder angle value
         actData = FX.read_device(devId)
@@ -180,8 +180,6 @@ def ankleHomeMot(devId,FX,angVertM,volt=400,valReturn=1):
 
         # Print current calibrated angle value in degrees and radians to screen
         print('%-15s %-7f %-7f' % ('Current Motor:',motVal,motDiff))
-
-        sleep(0.05)
 
         # If calculated difference is smaller than half a degree movement, the
         # limit has been reached
@@ -240,6 +238,8 @@ def dualHomeMot(devId,FX,angVertM,valReturn=1,volt=400):
 
     while run:
 
+        sleep(0.01)
+
         # Set Tracking Angle to Previously Measured Angle
         angPrevKnee = angCurKnee
         angPrevAnk = angCurAnk
@@ -254,8 +254,6 @@ def dualHomeMot(devId,FX,angVertM,valReturn=1,volt=400):
         # Calculate Difference between Tracking Angle and Current Angle
         angDiffKnee = angCurKnee - angPrevKnee
         angDiffAnk = angCurAnk - angVertM
-
-        sleep(0.05)
 
         # If calculated difference is smaller than half a degree movement, the
         # limit has been reached
@@ -330,6 +328,8 @@ def dualHomeJoint(devId,FX,angVertJ,valReturn=1,volt=400):
 
     while run:
 
+        sleep(0.01)
+
         # Set Tracking Angle to Previously Measured Angle
         angPrevKnee = angCurKnee
         angPrevAnk = angCurAnk
@@ -344,8 +344,6 @@ def dualHomeJoint(devId,FX,angVertJ,valReturn=1,volt=400):
         # Calculate Difference between Tracking Angle and Current Angle
         angDiffKnee = angCurKnee - angPrevKnee
         angDiffAnk = angCurAnk - angVertJ
-
-        sleep(0.05)
 
         # If calculated difference is smaller than half a degree movement, the
         # limit has been reached
@@ -409,7 +407,7 @@ def main(dev):
     devId1 = FX.open(port1,baudRate,debugLvl)
     devId2 = FX.open(port2,baudRate,debugLvl)
 
-    if devId1 == 19048:
+    if devId1 == osl.devKnee:
         devId = [devId1,devId2]
     else:
         devId = [devId2,devId1]
@@ -446,7 +444,7 @@ def main(dev):
             raise Exception('Invalid choice for joint chosen')
 
     except Exception as error:
-        
+
         print('Error Occurred')
         print(error)
 

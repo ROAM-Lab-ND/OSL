@@ -2,10 +2,9 @@
 ##################################### OPEN #####################################
 This package is a wrapper for completing calibration of the Dephy actuators of the Open Source Leg (OSL) for knee-ankle dual activity.
 
-Last Update: 9 June 2021
+Last Update: 16 June 2021
 Updates:
-    - Updated class object to minimize number of variables
-    - Updated dualCalMot and dualCalJoint to reflect new class object structure
+    - Removed unnecessary import of OSL_4BarFunctions_Mapping module
 #################################### CLOSE #####################################
 '''
 
@@ -21,7 +20,6 @@ from OSL_Modules.OSL_Calibration_Dual import OSL_CalibrationFunctions_IMU as imu
 from OSL_Modules.OSL_Calibration_Dual import OSL_CalibrationFunctions_Angle as ang
 from OSL_Modules.OSL_Calibration_Dual import OSL_CalibrationFunctions_Homing as home
 from OSL_Modules.OSL_Calibration_Dual import OSL_CalibrationFunctions_Storage as stor
-from OSL_Modules.OSL_4Bar_Dual import OSL_4BarFunctions_Mapping as four
 
 ############################# CALIBRATION CLASSES ##############################
 
@@ -48,11 +46,11 @@ class CalDataDual:
         bpdJointAnk - Ticks Per Degree Conversion Unit for Joint for Ankle
     '''
 
-    def __init__(self,cal=2,gyro=0,xAccel=0,yAccel=0,angExtMK=0,angFlexMK=0,angExtMA=0,angFlexMA=0,angExtJM=0,angFlexJM=0angExtJA=0,angFlexJA=0,bpdMK=0,bpdMA=0,bpdJK=0,bpdJA=0):
+    def __init__(self, cal=2, gyro=0, xAccel=0, yAccel=0, angExtMK=0, angFlexMK=0, angExtMA=0, angFlexMA=0, angExtJM=0, angFlexJM=0, angExtJA=0, angFlexJA=0, bpdMK=0, bpdMA=0, bpdJK=0, bpdJA=0):
 
         # If only worried about IMU, load IMU
         if cal == 0:
-            self.gyro = gyroK
+            self.gyro = gyro
 
             self.xAccel = xAccel
             self.yAccel = yAccel
@@ -66,8 +64,8 @@ class CalDataDual:
             self.angExtJoint = [angExtJM,angExtJA]
             self.angFlexJoint = [angFlexJM,angFlexJA]
 
-            self.angVertJoint = self.angExtJointAnk+20*bpdJA
-            self.angVertMot = self.angExtMotAnk+20*bpdMA
+            self.angVertJoint = self.angExtJoint[1] + 20*bpdJA
+            self.angVertMot = self.angExtMot[1] + 20*bpdMA
 
             self.bpdMot = [bpdMK,bpdMA]
             self.bpdJoint = [bpdJK,bpdJA]
@@ -76,16 +74,19 @@ class CalDataDual:
         # If no specification, load All
         else:
 
-            self.gyro = gyroK
+            self.gyro = gyro
 
             self.xAccel = xAccel
             self.yAccel = yAccel
 
+            self.angExtMot = [angExtMK,angExtMA]
+            self.angFlexMot = [angFlexMK,angFlexMA]
+
             self.angExtJoint = [angExtJM,angExtJA]
             self.angFlexJoint = [angFlexJM,angFlexJA]
 
-            self.angVertJoint = self.angExtJointAnk+20*bpdJA
-            self.angVertMot = self.angExtMotAnk+20*bpdMA
+            self.angVertJoint = self.angExtJoint[1] + 20*bpdJA
+            self.angVertMot = self.angExtMot[1] + 20*bpdMA
 
             self.bpdMot = [bpdMK,bpdMA]
             self.bpdJoint = [bpdJK,bpdJA]
@@ -115,8 +116,10 @@ def dualCalMot(devId,FX,calData,cal=2):
         # Joint Vertical Orientation Calculation
         calData.angVertMot = calData.angExtMot[1] - 67*calData.bpdMot[1]
 
+        print(calData.angExtMot,calData.angFlexMot,calData.angVertMot)
+
         # Motor Vertical Orientation Calculation
-        calData.angVertJoint = home.ankleHomeMot(devIdAnk,FX,calData.angVertMot)
+        calData.angVertJoint = home.ankleHomeMot(devId[1],FX,calData.angVertMot)
 
     storeCheck = input('Store calibration data in .yaml file as well? [y/n]: ')
 
@@ -137,10 +140,10 @@ def dualCalJoint(devId,FX,calData,cal=2):
     if cal != 1:
 
         # Z-Axis Gyroscope Calibration
-        calData.gyro = imu.gyroCal(devIdKnee,FX)
+        calData.gyro = imu.gyroCal(devId[0],FX)
 
         # X-Axis, Y-Axis Calibration
-        calData.xAccel,calData.yAccel = imu.accelCal(devIdKnee,FX)
+        calData.xAccel,calData.yAccel = imu.accelCal(devId[0],FX)
 
     if cal != 0:
 
@@ -158,7 +161,7 @@ def dualCalJoint(devId,FX,calData,cal=2):
         calData.angVertJoint = calData.angExtJoint[1] - 15*calData.bpdJoint[1]
 
         # Motor Vertical Orientation Calculation
-        calData.angVertMot = home.ankleHomeJoint(devId,FX,calData.angVertJoint)
+        calData.angVertMot = home.ankleHomeJoint(devId[1],FX,calData.angVertJoint)
 
     storeCheck = input('Store calibration data in .yaml file as well? [y/n]: ')
 

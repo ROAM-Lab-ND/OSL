@@ -11,13 +11,13 @@ Updates:
 #################################### IMPORTS ###################################
 
 from time import sleep, time, strftime
+import os, sys
 import math
-import numpy as np
-import yaml
 
 # Actuator Modules (Most Start with fx)
-from flexsea import fxEnums as fxe
 from flexsea import fxUtils as fxu
+
+from OSL_Modules.OSL_Calibration_Dual import OSL_Constants as osl
 
 ############################# FUNCTION DEFINITIONS #############################
 
@@ -37,21 +37,24 @@ def devOpen(FX):
 
     ports, baudRate = fxu.load_ports_from_file(fpath)
 
-    # Standard setup that is not crucial for understanding the script
+    # Print ports and baudrate values loaded, convert to proper data types
     print(ports,'\n',baudRate)
     port1 = str(ports[0])
     port2 = str(ports[1])
     baudRate=int(baudRate)
     debugLvl=6
 
+    # Open devices to grab device ids and set debug level
     devId1 = FX.open(port1,baudRate,debugLvl)
     devId2 = FX.open(port2,baudRate,debugLvl)
 
-    if devId1 == 19048: # WILL NEED TO CONFIRM THIS VALUE
+    # Create list of device ids where KNEE device is first in the list
+    if devId1 == osl.devKnee:
         devId = [devId1,devId2]
     else:
         devId = [devId2,devId1]
 
+    # Start streaming data to/from opened devices
     FX.start_streaming(devId[0],freq=100,log_en=False)
     FX.start_streaming(devId[1],freq=100,log_en=False)
     sleep(0.1)
@@ -69,11 +72,16 @@ def devClose(devId):
     '''
 
     for id in devId:
+
         # Disable the controller, send 0 PWM
         FX.send_motor_command(id, fxe.FX_VOLTAGE, 0)
         sleep(0.05)
+
+        # Stop streaming to device
         FX.stop_streaming(id)
         sleep(0.05)
+
+        # Close device fully
         FX.close(id)
         sleep(0.05)
 

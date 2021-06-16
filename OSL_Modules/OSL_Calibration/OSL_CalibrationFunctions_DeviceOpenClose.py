@@ -1,22 +1,20 @@
 '''
 ##################################### OPEN #####################################
-This package holds the functions for opening and closing the actuators for knee-ankle configuration
+This package holds the functions for opening and closing the actuators for single actuator configuration configuration
 
-Last Update: 4 June 2021
+Last Update: 16 June 2021
 Updates:
-    - Created
+    - Removed unnecessary imports, updated comments
 #################################### CLOSE #####################################
 '''
 
 #################################### IMPORTS ###################################
 
 from time import sleep, time, strftime
+import os, sys
 import math
-import numpy as np
-import yaml
 
 # Actuator Modules (Most Start with fx)
-from flexsea import fxEnums as fxe
 from flexsea import fxUtils as fxu
 
 ############################# FUNCTION DEFINITIONS #############################
@@ -35,16 +33,19 @@ def devOpen(FX):
     scriptPath = os.path.dirname(os.path.abspath(__file__))
     fpath = scriptPath + '/Ports_Single.yaml'
 
+    # Load ports and baudrate from file
     ports, baudRate = fxu.load_ports_from_file(fpath)
 
-    # Standard setup that is not crucial for understanding the script
+    # Print ports and baudrate values loaded, convert to proper data types
     print(ports,'\n',baudRate)
     port = str(ports[0])
     baudRate=int(baudRate)
     debugLvl=6
 
+    # Open device to grab device id and set debug level
     devId = FX.open(port,baudRate,debugLvl)
 
+    # Start streaming data to/from opened device
     FX.start_streaming(devId,freq=100,log_en=False)
     sleep(0.1)
 
@@ -61,11 +62,16 @@ def devClose(devId):
     '''
 
     for id in devId:
+
         # Disable the controller, send 0 PWM
         FX.send_motor_command(id, fxe.FX_VOLTAGE, 0)
         sleep(0.05)
+
+        # Stop streaming to device
         FX.stop_streaming(id)
         sleep(0.05)
+
+        # Close device fully
         FX.close(id)
         sleep(0.05)
 

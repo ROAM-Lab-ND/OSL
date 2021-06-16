@@ -2,9 +2,9 @@
 ##################################### OPEN #####################################
 This package houses the functions for calculating the position and transmission ratio mapping of the ankle for the Open Source Leg (OSL).
 
-Last Update: 8 June 2021
+Last Update: 16 June 2021
 Updates:
-    - Updated import file path location for OSL_Calibration
+    - Removed devId as an unnecessary input parameter
 #################################### CLOSE #####################################
 '''
 
@@ -21,12 +21,11 @@ from OSL_Modules.OSL_Calibration import OSL_CalibrationFunctions_Homing as home
 
 ############################# FUNCTION DEFINITION ##############################
 
-def anklePosMapping(devId,jointDesDeg,calData):
+def anklePosMapping(jointDesDeg,calData):
 
     '''
     This function is called to obtain the value of the motor encoder for a desired ankle angle.
     Inputs:
-        devId - ID of the actuator grabbed from FX.open() command
         jointDesDeg - Number of degrees the desired ankle angle is from vertical
         calData - Class structure that holds all of the actuator calibration data
     Outputs:
@@ -45,12 +44,11 @@ def anklePosMapping(devId,jointDesDeg,calData):
     # Return desired motor position in ticks
     return motDesTick
 
-def ankleMotMapping(devId,motAng,calData):
+def ankleMotMapping(motAng,calData):
 
     '''
     This function is called to obtain the value of the joint angle for a given motor tick reading.
     Inputs:
-        devId - ID of the actuator grabbed from FX.open() command
         motAng - Current motor angle in ticks
         calData - Class structure that holds all of the actuator calibration data
     Outputs:
@@ -65,12 +63,11 @@ def ankleMotMapping(devId,motAng,calData):
 
     return jointAng
 
-def ankleTRMappingJoint(devId,jointAng,calData):
+def ankleTRMappingJoint(jointAng,calData):
 
     '''
     This function is called to obtain the value of the transmission ratio for the current ankle angle.
     Inputs:
-        devId - ID of the actuator grabbed from FX.open() command
         jointAng - Current joint angle in ticks
         calData - Class structure that holds all of the actuator calibration data
     Outputs:
@@ -90,12 +87,11 @@ def ankleTRMappingJoint(devId,jointAng,calData):
     # Return desired transmission ratio
     return desTR
 
-def ankleTRMappingMot(devId,motAng,calData):
+def ankleTRMappingMot(motAng,calData):
 
     '''
     This function is called to obtain the value of the transmission ratio for the current motor angle.
     Inputs:
-        devId - ID of the actuator grabbed from FX.open() command
         motAng - Current joint angle in ticks
         calData - Class structure that holds all of the actuator calibration data
     Outputs:
@@ -117,6 +113,7 @@ def ankleTRMappingMot(devId,motAng,calData):
 
 def main(map):
 
+    '''
     #import numpy as np
     thisdir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     sys.path.append(thisdir)
@@ -148,7 +145,7 @@ def main(map):
             home.ankleHome(devId,FX,calData.angVertJoint,volt=-750,valReturn=0)
             angOff = float(input('Set offset from vertical (in degrees): '))
 
-            motDesTick = anklePosMapping(devId,angOff,calData)
+            motDesTick = anklePosMapping(angOff,calData)
             motDesDeg = (motDesTick - calData.angExtJoint)/calData.bpdJoint
 
             print('Determined Desired Motor Tick: {} \nDetermined Desired Motor Angle: {}'.format(motDesTick,motDesDeg))
@@ -157,7 +154,7 @@ def main(map):
 
             curAng = float(input('Set angle from vertical to calculate transmission ratio from (in degrees): '))
 
-            desTR = ankleTRMappingMot(devId,curAng,calData)
+            desTR = ankleTRMappingMot(curAng,calData)
             print('Determined Transmission Ratio: {}'.format(desTR))
 
         else:
@@ -177,8 +174,12 @@ def main(map):
         FX.close(devId)
         sleep(0.1)
         print("Graceful Exit Complete")
+    '''
 
 if __name__ == '__main__':
 
+    print('Standalone execution of this script is not currently supported.')
+    '''
     map = int(input('Which mapping are you testing? (0 for Position, 1 for Transmission Ratio): '))
     main(map)
+    '''

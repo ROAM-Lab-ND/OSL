@@ -175,7 +175,7 @@ def main():
     for port in ports:
         devId = FX.open(str(port),baudRate,debugLvl)
         sleep(0.1)
-        if devId != 19048:
+        if devId != osl.devKnee:
             FX.close(devId)
 
     FX.start_streaming(devId,freq=100,log_en=False)

@@ -2,9 +2,9 @@
 ##################################### OPEN #####################################
 This package holds the functions called by OSL_Calibration_Package.py to calibrate the Angles in the Dephy actuator
 
-Last Update: 8 June 2021
+Last Update: 16 June 2021
 Updates:
-    - Updated import file path location for OSL_Calibration
+    - Updated bpdJ calculation to set value to -2 if no external encoder is attached to avoid issues with division by zero.
 #################################### CLOSE #####################################
 '''
 
@@ -120,6 +120,10 @@ def angleCal(devId,FX,romJoint,volt=750):
     bpdM = (angExtM - angFlexM)/romMot
     bpdJ = (angExtJ - angFlexJ)/romJoint
 
+    if bpdJ == 0:
+
+        bpdJ = -2
+
     # Print ticks per degree ratio to screen
     print('Bit to Degree Motor Ratio: ', bpdM)
     print('Bit to Degree Joint Ratio: ', bpdJ)
@@ -144,17 +148,14 @@ def angleCal(devId,FX,romJoint,volt=750):
     # Convert calibrated value of the current angle to radians
     motCur = (angExtM - motVal)/bpdM
     motCurRad = np.multiply(motCur,osl.deg2rad)
-    if bpdJ != 0:
-        jointCur = (angExtJ - jointVal)/bpdJ
-        jointCurRad = np.multiply(jointCur,osl.deg2rad)
+
+    jointCur = (angExtJ - jointVal)/bpdJ
+    jointCurRad = np.multiply(jointCur,osl.deg2rad)
 
     sleep(0.3)
 
     # Print calibrated angle in degrees and radians to screen
-    if bpdJ != 0:
-        print('%-15s %-7f %-7f %-15s %-7f %-7f' % ('Current Motor: ',motCur,motCurRad,'Current Ankle:',jointCur,jointCurRad))
-    else:
-        print('%-15s %-7f %-7f' % ('Current Motor:',motCur,motCurRad))
+    print('%-15s %-7f %-7f %-15s %-7f %-7f' % ('Current Motor: ', motCur, motCurRad, 'Current Ankle:', jointCur, jointCurRad))
 
     while run:
 
@@ -173,18 +174,15 @@ def angleCal(devId,FX,romJoint,volt=750):
         # Calculate calibrated encoder angle in degrees and radians
         motCur = (angExtM - motVal)/bpdM
         motCurRad = np.multiply(motCur,osl.deg2rad)
-        if bpdJ != 0:
-            jointCur = (angExtJ - jointVal)/bpdJ
-            jointCurRad = np.multiply(jointCur,osl.deg2rad)
+
+        jointCur = (angExtJ - jointVal)/bpdJ
+        jointCurRad = np.multiply(jointCur,osl.deg2rad)
 
         # Calculate uncalibrated difference between tracking and current angle
         angDiffM = motVal - motPrev
 
         # Print current calibrated angle value in degrees and radians to screen
-        if bpdJ != 0:
-            print('%-15s %-7f %-7f %-15s %-7f %-7f' % ('Current Motor:',motCur,motCurRad,'Current Ankle:',jointCur,jointCurRad))
-        else:
-            print('%-15s %-7f %-7f' % ('Current Motor:',motCur,motCurRad))
+        print('%-15s %-7f %-7f %-15s %-7f %-7f' % ('Current Motor:',motCur,motCurRad,'Current Ankle:',jointCur,jointCurRad))
         sleep(0.05)
 
         # If calculated difference is smaller than half a degree movement, the
@@ -202,10 +200,7 @@ def angleCal(devId,FX,romJoint,volt=750):
     sleep(0.5)
 
     # Return encoder value at each limit point and measured conversion value
-    if romJoint == 30:
-        return angExtM,angFlexM,bpdM,angExtJ,angFlexJ,bpdJ
-    else:
-        return angExtM,angFlexM,bpdM
+    return angExtM,angFlexM,bpdM,angExtJ,angFlexJ,bpdJ
 
 
 def main(dev):

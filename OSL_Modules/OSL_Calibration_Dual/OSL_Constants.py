@@ -35,3 +35,7 @@ dampB = ((0.096*deg2count)/np.sqrt(3))/(1000*1000)
 # Force Sensor Channel Values
 pChan0 = 0
 pChan1 = 1
+
+# Device IDs for Knee and Ankle actuators
+devKnee = 17763
+devAnk = 14449

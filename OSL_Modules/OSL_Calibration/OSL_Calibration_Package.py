@@ -4,8 +4,7 @@ This package is a wrapper for completing calibration of the Dephy actuators of t
 
 Last Update: 8 June 2021
 Updates:
-    - Updated import file path location for OSL_Calibration
-    - Updated import file path location for OSL_4Bar
+    - Updated CalDataSingle to include all variables regardless of device
 #################################### CLOSE #####################################
 '''
 
@@ -64,14 +63,11 @@ class CalDataSingle:
             self.angFlexMot = angFlexM
             self.bpdMot = bpdM
 
-            # If working with device other than knee, load Joint Angle
-            if dev != 0:
-
-                self.angExtJoint = angExtJ
-                self.angFlexJoint = angFlexJ
-                self.angVertJoint = self.angExtJoint+20*bpdJ
-                self.angVertMot = self.angExtMot+20*self.bpdMot
-                self.bpdJoint = bpdJ
+            self.angExtJoint = angExtJ
+            self.angFlexJoint = angFlexJ
+            self.angVertJoint = self.angExtJoint+20*bpdJ
+            self.angVertMot = self.angExtMot+20*self.bpdMot
+            self.bpdJoint = bpdJ
 
         # If no specification, load All
         else:
@@ -82,13 +78,11 @@ class CalDataSingle:
             self.angFlexMot = angFlexM
             self.bpdMot = bpdM
 
-            # If working with device other than knee, load Joint Angle
-            if dev != 0:
-                self.angExtJoint = angExtJ
-                self.angFlexJoint = angFlexJ
-                self.angVertJoint = self.angExtJoint+20*bpdJ
-                self.angVertMot = self.angExtMot+20*self.bpdMot
-                self.bpdJoint = bpdJ
+            self.angExtJoint = angExtJ
+            self.angFlexJoint = angFlexJ
+            self.angVertJoint = self.angExtJoint+20*bpdJ
+            self.angVertMot = self.angExtMot+20*self.bpdMot
+            self.bpdJoint = bpdJ
 
 def kneeCal(devId,FX,calData,cal=2):
 
@@ -236,7 +230,7 @@ def main(dev,cal):
     calData = CalDataSingle(cal,dev)
 
     try:
-        
+
         if dev == 0:
             kneeCal(devId,FX,calData,cal)
         elif dev == 1:

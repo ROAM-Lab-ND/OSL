@@ -2,13 +2,9 @@
 ##################################### OPEN #####################################
 This package houses the functions for calculating the position and transmission ratio mapping of the ankle for the Open Source Leg (OSL).
 
-Last Update: 9 June 2021
+Last Update: 16 June 2021
 Updates:
-    - Created
-    - Update anklePosMapping to anklePosMappingJoint
-    - Update ankleMotMapping to anklePosMappingMot
-    - Update main() to use finally tag for proper syntax of closing actuator streams
-    - Updated imports 
+    - Removed devId as an unnecessary input parameter
 #################################### CLOSE #####################################
 '''
 
@@ -29,12 +25,11 @@ from OSL_Modules.OSL_Calibration_Dual import OSL_CalibrationFunctions_Homing as 
 
 ############################# FUNCTION DEFINITION ##############################
 
-def anklePosMappingJoint(devId,jointDesDeg,calData):
+def anklePosMappingJoint(jointDesDeg,calData):
 
     '''
     This function is called to obtain the value of the motor encoder for a desired ankle angle.
     Inputs:
-        devId - ID of the actuator grabbed from FX.open() command
         jointDesDeg - Number of degrees the desired ankle angle is from vertical
         calData - Class structure that holds all of the actuator calibration data
     Outputs:
@@ -53,12 +48,11 @@ def anklePosMappingJoint(devId,jointDesDeg,calData):
     # Return desired motor position in ticks
     return motDesTick
 
-def anklePosMappingMot(devId,motAng,calData):
+def anklePosMappingMot(motAng,calData):
 
     '''
     This function is called to obtain the value of the joint angle for a given motor tick reading.
     Inputs:
-        devId - ID of the actuator grabbed from FX.open() command
         motAng - Current motor angle in ticks
         calData - Class structure that holds all of the actuator calibration data
     Outputs:
@@ -73,12 +67,11 @@ def anklePosMappingMot(devId,motAng,calData):
 
     return jointAng
 
-def ankleTRMappingJoint(devId,jointAng,calData):
+def ankleTRMappingJoint(jointAng,calData):
 
     '''
     This function is called to obtain the value of the transmission ratio for the current ankle angle.
     Inputs:
-        devId - ID of the actuator grabbed from FX.open() command
         jointAng - Current joint angle in ticks
         calData - Class structure that holds all of the actuator calibration data
     Outputs:
@@ -98,12 +91,11 @@ def ankleTRMappingJoint(devId,jointAng,calData):
     # Return desired transmission ratio
     return desTR
 
-def ankleTRMappingMot(devId,motAng,calData):
+def ankleTRMappingMot(motAng,calData):
 
     '''
     This function is called to obtain the value of the transmission ratio for the current motor angle.
     Inputs:
-        devId - ID of the actuator grabbed from FX.open() command
         motAng - Current joint angle in ticks
         calData - Class structure that holds all of the actuator calibration data
     Outputs:
@@ -125,6 +117,7 @@ def ankleTRMappingMot(devId,motAng,calData):
 
 def main(map):
 
+    '''
     #import numpy as np
     thisdir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     sys.path.append(thisdir)
@@ -200,8 +193,12 @@ def main(map):
         FX.close(devId)
         sleep(0.1)
         print("Graceful Exit Complete")
+    '''
 
 if __name__ == '__main__':
 
+    print('Standalone execution of this script is not currently supported.')
+    '''
     map = int(input('Which mapping are you testing? (0 for Position, 1 for Transmission Ratio): '))
     main(map)
+    '''
