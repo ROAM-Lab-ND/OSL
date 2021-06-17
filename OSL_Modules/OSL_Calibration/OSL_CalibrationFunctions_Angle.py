@@ -108,13 +108,13 @@ def angleCal(devId,FX,romJoint,volt=750):
     # Full extension is considered when the knee is straight to hard stop
     # Full extension is considered when the ankle is in plantar flexion
     angExtM,angExtJ = angleZero(devId,FX,abs(volt))
-    sleep(osl.dt)
+    sleep(osl.dtMilli)
 
     # Call to angleZero function for determining encoder value at full flexion
     # Full flexion is considered when then knee is bent to hard stop
     # Full flexion is considered when the ankle is in dorsiflexion
     angFlexM,angFlexJ = angleZero(devId,FX,-abs(volt))
-    sleep(osl.dt)
+    sleep(osl.dtMilli)
 
     # Calculate the ticks per degree conversion value for the motor and joint
     bpdM = (angExtM - angFlexM)/romMot

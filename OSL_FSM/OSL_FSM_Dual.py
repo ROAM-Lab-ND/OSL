@@ -67,7 +67,7 @@ except Exception as error:
 
     print('Error Occurred:')
     print(error)
-    opcl.devClose()
+    opcl.devClose(devId,FX)
     raise
 
 TR = [calData.bpdMot[0]/osl.deg2count, 0]
@@ -78,24 +78,26 @@ spi.max_speed_hz=1000000
 
 # Setting up States
 # States are (Unspecified, Early_Stance, Late_Stance, Early Swing, Late Swing)
-STATES: tuple = (0, 1, 2, 3, 4)
-stiffAnk: tuple = (0.03, 0.06, 0.08, 0.05, 0.05) # Nm/deg/kg
-stiffKnee: tuple = ()
-dampAnk: tuple = (0.001, 0.0003, 0.00015, 0.0003, 0.0003) # Nms/deg/kg
-dampKnee: tuple = ()
-equilAnk: tuple = (0, -5, 5, 0, 0) # ankle degrees from vertical, 0, -5, 10, 0 (positive plantarflexion)
-equilKnee: tuple = ()
+STATES = (0, 1, 2, 3, 4)
+
+stiffKnee = (0, 0.15, 0.20, 0.02, 0.02)
+stiffAnk = (0.03, 0.06, 0.08, 0.05, 0.05) # Nm/deg/kg
+
+dampKnee = (0, 0, 0, 0.0012, 0.0012)
+dampAnk = (0.001, 0.0003, 0.00015, 0.0003, 0.0003) # Nms/deg/kg
+equilKnee = (0, 1, 1, 90, 0)
+equilAnk = (0, -5, 5, 0, 0) # ankle degrees from vertical, 0, -5, 10, 0 (positive plantarflexion)
 
 usrWeight = 72 # [kgs]
 
-GAINSAnk = {'kp': 40, 'ki': 400, 'K': 50, 'B': 650, 'FF': 128}
 GAINSKnee = {'kp': 40, 'ki': 400, 'K': 50, 'B': 650, 'FF': 128}
+GAINSAnk = {'kp': 40, 'ki': 400, 'K': 50, 'B': 650, 'FF': 128}
 
 # Read initial angle
 actDataKnee = FX.read_device(devId[0])
 actDataAnk = FX.read_device(devId[1])
-angInitKnee = actDataKnee.mot_ang
-angInitAnk = actDataAnk.mot_ang
+motKnee = actDataKnee.mot_ang
+motAnk = actDataAnk.mot_ang
 
 
 # Set gains (in order: kp, ki, kd, K, B & ff)
@@ -103,8 +105,8 @@ FX.set_gains(devId[0], GAINSKnee['kp'], GAINSKnee['ki'], 0, GAINSKnee['K'], GAIN
 FX.set_gains(devId[1], GAINSAnk['kp'], GAINSAnk['ki'], 0, GAINSAnk['K'], GAINSAnk['B'], GAINSAnk['FF'])
 
 # Setpoint = initial angle
-FX.send_motor_command(devId[0], fxe.FX_IMPEDANCE, angInitKnee)
-FX.send_motor_command(devId[1], fxe.FX_IMPEDANCE, angInitAnk)
+FX.send_motor_command(devId[0], fxe.FX_IMPEDANCE, motKnee)
+FX.send_motor_command(devId[1], fxe.FX_IMPEDANCE, motAnk)
 
 # Select transition rate and positions
 #num_time_steps = int(500)
@@ -120,7 +122,7 @@ threshForceOff = 8
 threshDF = -10
 
 # Initializing Force Sensor Readings for Previous Time Steps
-pad0ValPrev1 = pad0ValPrev2 = pad1ValPrev1 = pad1ValPrev2  = 0
+pad0Val = pad0ValPrev1 = pad0ValPrev2 = pad1Val = pad1ValPrev1 = pad1ValPrev2  = 0
 pad0ValMax = pad1ValMax = 0
 
 firstPass = True
@@ -131,15 +133,17 @@ try:
 
     while True:
 
+        motKneePrev = motKnee
+
         pad0ValPrev2 = pad0ValPrev1
         pad0ValPrev1 = pad0Val
 
         pad1ValPrev2 = pad1ValPrev1
         pad1ValPrev1 = pad1Val
 
-        padVal0 = readadc(osl.pChan0) # toe
-        padVal1 = readadc(osl.pChan1) # heel
-        print('Pressure Pad Value: %d %d' %(padVal0, padVal1))
+        pad0Val = pres.readadc(osl.pChan0) # toe
+        pad1Val = pres.readadc(osl.pChan1) # heel
+        print('Pressure Pad Value: %d %d' %(pad0Val, pad1Val))
 
         actDataKnee = FX.read_device(devId[0])
         actDataAnk = FX.read_device(devId[1])
@@ -148,49 +152,34 @@ try:
         jointKnee = (motKnee - calData.angExtMot[0])/calData.bpdMot[0]
 
         motAnk = actDataAnk.mot_ang
-        jointAnK = four.anklePosMappingMot(devId[1], motAnk,calData)
-        TR[1] = four.ankleTRMappingMot(devId[1],motAnk,calData)
+        jointAnK = four.anklePosMappingMot(motAnk,calData)
+        TR[1] = four.ankleTRMappingMot(motAnk,calData)
 
-        desKKnee = tor.motStiffness(usrWeight, stiffKnee[stateCur], TR[0])
-        desBKnee = tor.motDamping(usrWeight, dampKnee[stateCur], TR[0])
+        gyroKnee = (actDataKnee.gyroz*osl.deg2rad)/osl.gyroConv - calData.gyro
+        diffMotKnee = ((motKnee - motKneePrev)*osl.deg2rad)/calData.bpdMot[0]
 
-        desKAnk = tor.motStiffness(usrWeight, stiffAnk[stateCur], TR[1])
-        desBAnk = tor.motDamping(usrWeight, dampAnk[stateCur], TR[1])
-
-        desBKnee = 1000
-        desBAnk = 1000
-
-        motDesKnee = calData.bpdMot[0]*equilKnee[stateCur] + calData.angExtMot[0]
-        motDesAnk = four.anklePosMappingJoint(devId[1], equilAnk[stateCur], calData)
-
-        # Control gain constants
-        GAINSAnk['K'], GAINSAnk['B'] = desKAnk, desBAnk
-        GAINSKnee['K'], GAINSKnee['B'] = desKKnee, desBKnee
-
-        # Set gains (in order: kp, ki, kd, K, B & ff)
-        FX.set_gains(devId[0], GAINSKnee['kp'], GAINSKnee['ki'], 0, GAINSKnee['K'], GAINSKnee['B'], GAINSKnee['FF'])
-        FX.set_gains(devId[1], GAINSAnk['kp'], GAINSAnk['ki'], 0, GAINSAnk['K'], GAINSAnk['B'], GAINSAnk['FF'])
-
-        FX.send_motor_command(devId[0], fxe.FX_IMPEDANCE, motDesKnee)
-        FX.send_motor_command(devId[1], fxe.FX_IMPEDANCE, motDesAnk)
+        rotKnee = gyroKnee - diffMotKnee/osl.dtCenti
 
         if stateCur == 0:
 
             stateName = 'Unspecified'
             print(stateName)
 
-            if pres.forceOn(padVal0, pad0ValPrev1, pad0ValPrev2, threshForceOn) or pres.forceOn(padVal1, pad1ValPrev1, pad1ValPrev2, threshForceOn):
+            desBKnee = tor.motDamping(usrWeight, dampKnee[stateCur], TR[0])
+            desBAnk = tor.motDamping(usrWeight, dampAnk[stateCur], TR[1])
+
+            if pres.forceOn(pad0Val, pad0ValPrev1, pad0ValPrev2, threshForceOn) or pres.forceOn(pad1Val, pad1ValPrev1, pad1ValPrev2, threshForceOn):
 
                 stateCur = STATES[1]
                 print('Transitioning to Early Stance')
 
-            sleep(0.01)
-            continue
-
-        if stateCur == 1:
+        elif stateCur == 1:
 
             stateName = 'Early Stance'
             print(stateName)
+
+            desBKnee = 1000
+            desBAnk = 1000
 
             if firstPass:
 
@@ -217,40 +206,76 @@ try:
 
                    print('Has not passed dorsiflexion threshold')
 
-            if pres.forceOff(padVal0, pad0ValPrev1, threshForceOff) and pres.forceOff(padVal1, pad1ValPrev1, threshForceOff):
+            if pres.forceOff(pad0Val, pad0ValPrev1, threshForceOff) and pres.forceOff(pad1Val, pad1ValPrev1, threshForceOff):
 
                 stateCur = STATES[3]
                 print('Transitioning to Swing!')
 
-            sleep(0.01)
-            continue
-
-        if stateCur == 2:
+        elif stateCur == 2:
 
             stateName = 'Late Stance'
             print(stateName)
 
-            if pres.forceOff(padVal0, pad0ValPrev1, threshForceOff) and pres.forceOff(padVal1, pad1ValPrev1, threshForceOff):
+            desBKnee = 2000
+            desBAnk = 2000
+
+            if pres.forceOff(pad0Val, pad0ValPrev1, threshForceOff) and pres.forceOff(pad1Val, pad1ValPrev1, threshForceOff):
 
                 stateCur = STATES[3]
-                print('Transitioning to Swing!')
+                print('Transitioning to Early Swing')
 
-            sleep(0.01)
-            continue
+        elif stateCur == 3:
 
-        if stateCur == 3:
-
-            stateName = 'Swing'
+            stateName = 'Early Swing'
             print(stateName)
 
-            if pres.forceOn(padVal0, pad0ValPrev1, pad0ValPrev2, threshForceOn) or pres.forceOn(padVal1, pad1ValPrev1, pad1ValPrev2, threshForceOn):
+            desBKnee = 1000
+            desBAnk = 1000
+
+            if pres.forceOn(pad0Val, pad0ValPrev1, pad0ValPrev2, threshForceOn) or pres.forceOn(pad1Val, pad1ValPrev1, pad1ValPrev2, threshForceOn):
 
                 stateCur = STATES[1]
                 firstPass = True
                 print('Transitioning to Early Stance')
 
-            sleep(0.01)
-            continue
+            if rotKnee > threshRot:
+
+                stateCur = STATES[4]
+                print('Transitioning to Late Swing')
+
+        elif stateCur == 4:
+
+            stateName = 'Late Swing'
+            print(stateName)
+
+            desBKnee = 1000
+            desBAnk = 1000
+
+            if pres.forceOn(pad0Val, pad0ValPrev1, pad0ValPrev2, threshForceOn) or pres.forceOn(pad1Val, pad1ValPrev1, pad1ValPrev2, threshForceOn):
+
+                stateCur = STATES[1]
+                firstPass = True
+                print('Transitioning to Early Stance')
+
+
+        desKKnee = tor.motStiffness(usrWeight, stiffKnee[stateCur], TR[0])
+        desKAnk = tor.motStiffness(usrWeight, stiffAnk[stateCur], TR[1])
+
+        motDesKnee = calData.bpdMot[0]*equilKnee[stateCur] + calData.angExtMot[0]
+        motDesAnk = four.anklePosMappingJoint(equilAnk[stateCur], calData)
+
+        # Control gain constants
+        GAINSAnk['K'], GAINSAnk['B'] = desKAnk, desBAnk
+        GAINSKnee['K'], GAINSKnee['B'] = desKKnee, desBKnee
+
+        # Set gains (in order: kp, ki, kd, K, B & ff)
+        FX.set_gains(devId[0], GAINSKnee['kp'], GAINSKnee['ki'], 0, GAINSKnee['K'], GAINSKnee['B'], GAINSKnee['FF'])
+        FX.set_gains(devId[1], GAINSAnk['kp'], GAINSAnk['ki'], 0, GAINSAnk['K'], GAINSAnk['B'], GAINSAnk['FF'])
+
+        FX.send_motor_command(devId[0], fxe.FX_IMPEDANCE, motDesKnee)
+        FX.send_motor_command(devId[1], fxe.FX_IMPEDANCE, motDesAnk)
+
+        sleep(osl.dtCenti)
 
 except Exception as error:
 
@@ -258,4 +283,4 @@ except Exception as error:
 
 finally:
 
-    opcl.devClose()
+    opcl.devClose(devId,FX)

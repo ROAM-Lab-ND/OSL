@@ -52,7 +52,7 @@ def gyroCal(devId,FX,N=30000,Nvis=15000,run=1):
 
         # Print Current Value and Average Value to Screen
         print('%-8i %-15f %-15f' % (count,gyro_z,gyro_avg))
-        sleep(osl.dt)
+        sleep(osl.dtMilli)
 
     print('Zero-Point Calibration Complete.  Running Visual Confirmation Test')
     sleep(0.5)
@@ -79,7 +79,7 @@ def gyroCal(devId,FX,N=30000,Nvis=15000,run=1):
         # Print current calibrated z-Axis Gyroscope Value and Running Average
         # to Screen
         print('%-8i %-15f %-15f' % (count,cal_z,cal_avg))
-        sleep(osl.dt)
+        sleep(osl.dtMilli)
 
     print('Gyro Calibration Run ',run,' Complete')
     # Return Calibration Bias for future use
@@ -117,7 +117,7 @@ def accelCal(devId,FX,N=30000,Nvis=15000,run=1):
 
         # Print Current Readings and Running Average Readings to Screen
         print('%-5i %-10f %-10f %-10f %-10f' % (count,xAccel,x_avg,yAccel,y_avg))
-        sleep(osl.dt)
+        sleep(osl.dtMilli)
 
     print('Accelerometer Calibration Complete.  Running Visual Confirmation Test')
     sleep(0.5)
@@ -143,7 +143,7 @@ def accelCal(devId,FX,N=30000,Nvis=15000,run=1):
 
         # Print calibrated Accelerometer values to screen
         print('%-5i %-10f %-10f' % (count,x_cal,y_cal))
-        sleep(osl.dt)
+        sleep(osl.dtMilli)
 
     print('Accel Calibration Run ',run,' Complete')
     # Return Calibration Biases for future use

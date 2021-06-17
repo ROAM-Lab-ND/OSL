@@ -26,7 +26,9 @@ gyroConv = 32.8
 accelConv = 8192
 
 # Time Step
-dt = 0.001
+dtMilli = 0.001
+dtCenti = 0.01
+dtDeci = 0.1
 
 # Dephy Actuator Stiffness and Damping Parameters
 stiffK = ((0.096*deg2count)/np.sqrt(3))/(1000*2**9)
