@@ -5,6 +5,7 @@ This package holds the functions for opening and closing the actuators for singl
 Last Update: 16 June 2021
 Updates:
     - Removed unnecessary imports, updated comments
+    - Fixed syntax errors regarding FX class object and imports
 #################################### CLOSE #####################################
 '''
 
@@ -16,6 +17,7 @@ import math
 
 # Actuator Modules (Most Start with fx)
 from flexsea import fxUtils as fxu
+from flexsea import fxEnums as fxe
 
 ############################# FUNCTION DEFINITIONS #############################
 
@@ -51,31 +53,30 @@ def devOpen(FX):
 
     return devId
 
-def devClose(devId):
+def devClose(devId,FX):
 
     '''
     Function for closing streams to Dephy actuators
     Inputs:
         devId - List of device ids currently open and streaming
+        FX - Class object with flexSEA Dephy functions for opening and streaming
     Outputs:
         None
     '''
 
-    for id in devId:
+    # Disable the controller, send 0 PWM
+    FX.send_motor_command(devId, fxe.FX_VOLTAGE, 0)
+    sleep(0.05)
 
-        # Disable the controller, send 0 PWM
-        FX.send_motor_command(id, fxe.FX_VOLTAGE, 0)
-        sleep(0.05)
+    # Stop streaming to device
+    FX.stop_streaming(devId)
+    sleep(0.05)
 
-        # Stop streaming to device
-        FX.stop_streaming(id)
-        sleep(0.05)
+    # Close device fully
+    FX.close(devId)
+    sleep(0.05)
 
-        # Close device fully
-        FX.close(id)
-        sleep(0.05)
-
-        print('Graceful Exit Completed')
+    print('Graceful Exit Completed')
 
 def main():
 

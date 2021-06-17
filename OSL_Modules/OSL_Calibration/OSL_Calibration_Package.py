@@ -2,9 +2,10 @@
 ##################################### OPEN #####################################
 This package is a wrapper for completing calibration of the Dephy actuators of the Open Source Leg (OSL).
 
-Last Update: 8 June 2021
+Last Update: 16 June 2021
 Updates:
     - Updated CalDataSingle to include all variables regardless of device
+    - Updated kneeCal to save values for joint encoder readings
 #################################### CLOSE #####################################
 '''
 
@@ -97,7 +98,7 @@ def kneeCal(devId,FX,calData,cal=2):
     if cal != 0:
 
         # Motor Hardstops and Bits Per Degree Calculation
-        calData.angExtMot,calData.angFlexMot,calData.bpdMot = ang.angleCal(devId,FX,romJoint=120)
+        calData.angExtMot,calData.angFlexMot,calData.bpdMot,calData.angExtJoint,calData.angFlexJoint,calData.bpdJoint = ang.angleCal(devId,FX,romJoint=120)
 
     storeCheck = input('Store calibration data in .yaml file as well? [y/n]: ')
 
@@ -191,18 +192,11 @@ def ankleCalMot(devId,FX,calData,cal=2):
 
     return calData
 
-def main(dev,cal):
+def main(cal):
 
     '''
     For standalone calling of the angle calibration functions
     '''
-
-    try:
-        if (dev != 0) or (dev != 1):
-            raise Exception('Invalid joint chosen')
-    except:
-        print('Error occurred')
-        raise
 
     #import numpy as np
     thisdir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -231,10 +225,12 @@ def main(dev,cal):
 
     try:
 
-        if dev == 0:
+        if devId == osl.devKnee:
             kneeCal(devId,FX,calData,cal)
-        elif dev == 1:
+        elif devId == osl.devAnk:
             ankleCal(devId,FX,calData,cal)
+        else:
+            raise Exception('Invalid device ID. Check device ID and compare with OSL_Constants.py stored values.')
 
     except:
 
@@ -253,6 +249,5 @@ def main(dev,cal):
 
 if __name__ == '__main__':
 
-    dev = int(input('Which joint do you want to calibrate? (0 for Knee, 1 for Ankle): '))
     cal = int(input('What data needs calibrating? (0 for IMU, 1 for Angle, 2 for Both): '))
-    main(dev,cal)
+    main(cal)

@@ -31,9 +31,9 @@ def calDump(calData,dev,cal=2):
         dev - Calibration data joint (0 for Knee, 1 for Ankle)
     '''
 
-    if dev == 0:
+    if dev == osl.devKnee:
         pFile = open('Knee_Cal.yaml','w')
-    elif dev == 1:
+    elif dev == osl.devAnk:
         pFile = open('Ankle_Cal.yaml','w')
     else:
         raise Exception('Invalid joint option for data dump')
@@ -51,11 +51,11 @@ def calLoad(dev):
         calData - Class structure storing the calibration data
     '''
 
-    if dev == 0:
+    if dev == osl.devKnee:
 
         pFile = open('Knee_Cal.yaml')
 
-    elif dev == 1:
+    elif dev == osl.devAnk:
 
         pFile = open('Ankle_Cal.yaml')
 
@@ -63,7 +63,7 @@ def calLoad(dev):
 
         raise Exception('Invalid joint option for data load')
 
-    calData = yaml.load(calData,pFile,Loader=yaml.Loader)
+    calData = yaml.load(pFile,Loader=yaml.Loader)
     pFile.close()
 
     return calData

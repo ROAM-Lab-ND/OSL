@@ -44,7 +44,7 @@ def calLoad():
 
     pFile = open('Dual_Cal.yaml')
 
-    calData = yaml.load(calData,pFile,Loader=yaml.Loader)
+    calData = yaml.load(pFile,Loader=yaml.Loader)
     pFile.close()
 
     return calData

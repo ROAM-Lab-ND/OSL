@@ -21,7 +21,7 @@ from OSL_Modules.OSL_Calibration_Dual import OSL_CalibrationFunctions_Homing as 
 
 ############################# FUNCTION DEFINITION ##############################
 
-def readadc(adcChan):
+def readadc(adcChan,spi):
 
     '''
     This function is used to return the force sensor data for whichever channel is passed in.
@@ -36,7 +36,7 @@ def readadc(adcChan):
     '''
 
     # read SPI data from the MCP3008, 8 channels in total
-    if adcChan > 7 or adcNum < 0:
+    if adcChan > 7 or adcChan < 0:
         return -1
     spiDat = spi.xfer2([1, 8 + adcChan << 4, 0])
     data = ((spiDat[1] & 3) << 8) + spiDat[2]
@@ -67,7 +67,7 @@ def forceOn(padValCur, padValPrev1, padValPrev2, thresh):
 
     return intent
 
-def pressure_off_transition(padValCur, padValPrev, thresh):
+def forceOff(padValCur, padValPrev, thresh):
 
     '''
     This function is used to determine whether a force sensor of interest is considered 'deactivated' with intention. The determining factor involves readings below a threshold for at least two consecutive time steps

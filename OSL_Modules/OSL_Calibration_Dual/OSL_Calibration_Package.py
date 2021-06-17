@@ -29,21 +29,17 @@ class CalDataDual:
     Class used for storing calibration data of dual actuators
     Structure:
         cal - Calibration Being Run (0: IMU only, 1: Angle only, 2+: Both)
-        gyroKnee - Z-Axis Gyroscope Bias for Knee
-        gyroAnk - Z-Axis Gyroscope Bias for Ankle
-        xAccelKnee - X-Axis Accelerometer Bias for Knee
-        yAccelKnee - Y-Axis Accelerometer Bias for Knee
-        xAccelAnk - X-Axis Accelerometer Bias for Ankle
-        yAccelAnk - Y-Axis Accelerometer Bias for Ankle
-        angExtMotKnee - Motor Encoder Tick Value at Full Extension for Knee
-        angFlexMotKnee - Motor Encoder Tick Value at Full Flexion for Knee
-        angExtMotAnk - Motor Encoder Tick Value at Full Extension for Ankle
-        angFlexMotAnk - Motor Encoder Tick Value at Full Flexion for Ankle
-        angExtJointAnk - Joint Encoder Tick Value at Full Extension for Ankle
-        angFlexJointAnk - Joint Encoder Tick Value at Full Flexion for Ankle
-        bpdMotKnee - Ticks Per Degree Conversion Unit for Motor for Knee
-        bpdMotAnk - Ticks Per Degree Conversion Unit for Motor for Ankle
-        bpdJointAnk - Ticks Per Degree Conversion Unit for Joint for Ankle
+        gyro - Z-Axis Gyroscope Bias
+        xAccel - X-Axis Accelerometer Bias
+        yAccel - Y-Axis Accelerometer Bias
+        angExtMot - Motor Encoder Tick Value at Full Extension
+        angFlexMot - Motor Encoder Tick Value at Full Flexion
+        angExtJoint- Joint Encoder Tick Value at Full Extension
+        angFlexJoint - Joint Encoder Tick Value at Full Flexion
+        angVertMot - Motor Encoder Tick Value at Vertical Ankle Orientation
+        angVertJoint - Joint Encoder Tick Value at Vertical Ankle Orientation
+        bpdMot - Ticks Per Degree Conversion Unit for Motor
+        bpdJoint - Ticks Per Degree Conversion Unit for Joint
     '''
 
     def __init__(self, cal=2, gyro=0, xAccel=0, yAccel=0, angExtMK=0, angFlexMK=0, angExtMA=0, angFlexMA=0, angExtJM=0, angFlexJM=0, angExtJA=0, angFlexJA=0, bpdMK=0, bpdMA=0, bpdJK=0, bpdJA=0):
@@ -64,8 +60,8 @@ class CalDataDual:
             self.angExtJoint = [angExtJM,angExtJA]
             self.angFlexJoint = [angFlexJM,angFlexJA]
 
-            self.angVertJoint = self.angExtJoint[1] + 20*bpdJA
-            self.angVertMot = self.angExtMot[1] + 20*bpdMA
+            self.angVertJoint = self.angExtJoint[1] + 15*bpdJA
+            self.angVertMot = self.angExtMot[1] + 67*bpdMA
 
             self.bpdMot = [bpdMK,bpdMA]
             self.bpdJoint = [bpdJK,bpdJA]
@@ -121,7 +117,7 @@ def dualCalMot(devId,FX,calData,cal=2):
         # Motor Vertical Orientation Calculation
         calData.angVertJoint = home.ankleHomeMot(devId[1],FX,calData.angVertMot)
 
-    storeCheck = input('Store calibration data in .yaml file as well? [y/n]: ')
+    storeCheck = input('Store calibration data in Dual_Cal.yaml file as well? [y/n]: ')
 
     if storeCheck in 'yes':
 
@@ -163,7 +159,7 @@ def dualCalJoint(devId,FX,calData,cal=2):
         # Motor Vertical Orientation Calculation
         calData.angVertMot = home.ankleHomeJoint(devId[1],FX,calData.angVertJoint)
 
-    storeCheck = input('Store calibration data in .yaml file as well? [y/n]: ')
+    storeCheck = input('Store calibration data in Dual_Cal.yaml file as well? [y/n]: ')
 
     if storeCheck in 'yes':
 

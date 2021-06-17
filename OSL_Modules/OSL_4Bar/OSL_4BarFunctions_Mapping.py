@@ -10,6 +10,10 @@ Updates:
 
 ############################### PACKAGE IMPORTS ################################
 
+# Standard Python Modules
+from time import sleep, time, strftime
+import numpy as np
+
 # Actuator Modules (Most Start with fx)
 from flexsea import flexsea as fx
 from flexsea import fxUtils as fxu
@@ -21,7 +25,7 @@ from OSL_Modules.OSL_Calibration import OSL_CalibrationFunctions_Homing as home
 
 ############################# FUNCTION DEFINITION ##############################
 
-def anklePosMapping(jointDesDeg,calData):
+def anklePosMappingJoint(jointDesDeg,calData):
 
     '''
     This function is called to obtain the value of the motor encoder for a desired ankle angle.
@@ -44,7 +48,7 @@ def anklePosMapping(jointDesDeg,calData):
     # Return desired motor position in ticks
     return motDesTick
 
-def ankleMotMapping(motAng,calData):
+def anklePosMappingMot(motAng,calData):
 
     '''
     This function is called to obtain the value of the joint angle for a given motor tick reading.
@@ -125,28 +129,40 @@ def main(map):
 
     # Standard setup that is not crucial for understanding the script
     print(ports,'\n',baudRate)
-    port = str(ports[0])
     baudRate=int(baudRate)
     debugLvl=6
 
     # Connect to actuator and open data stream
     FX = fx.FlexSEA()
 
-    devId = FX.open(port,baudRate,debugLvl)
-    FX.start_streaming(devId,freq=100,log_en=False)
+    for port in ports:
+        devId = FX.open(str(port),baudRate,debugLvl)
+        sleep(0.1)
+        if devId != 14449:
+            FX.close(devId)
+    try:
+
+        FX.start_streaming(devId,freq=100,log_en=False)
+
+    except Exception as error:
+
+        print(error)
+        sleep(0.05)
+        FX.close(devId)
+
     sleep(0.1)
 
     try:
-        calData = stor.calLoad(1)
+        calData = stor.calLoad()
 
         if map == 0:
 
             print('Homing to vertical orientation...')
-            home.ankleHome(devId,FX,calData.angVertJoint,volt=-750,valReturn=0)
+            home.ankleHomeJoint(devId,FX,calData.angVertJoint,volt=400,valReturn=0)
             angOff = float(input('Set offset from vertical (in degrees): '))
 
-            motDesTick = anklePosMapping(angOff,calData)
-            motDesDeg = (motDesTick - calData.angExtJoint)/calData.bpdJoint
+            motDesTick = anklePosMappingJoint(devId,angOff,calData)
+            motDesDeg = (motDesTick - calData.angExtJoint)/calData.bpdJoint[1]
 
             print('Determined Desired Motor Tick: {} \nDetermined Desired Motor Angle: {}'.format(motDesTick,motDesDeg))
 
@@ -154,21 +170,24 @@ def main(map):
 
             curAng = float(input('Set angle from vertical to calculate transmission ratio from (in degrees): '))
 
-            desTR = ankleTRMappingMot(curAng,calData)
+            desTR = ankleTRMappingMot(devId,curAng,calData)
             print('Determined Transmission Ratio: {}'.format(desTR))
 
         else:
             raise Exception('Invalid mapping option chosen')
 
-    except:
+    except Exception as error:
 
         print('Failed to complete test...')
+        print(error)
 
         sleep(0.05)
         # Disable the controller, send 0 PWM
         FX.send_motor_command(devId, fxe.FX_VOLTAGE, 0)
-        sleep(0.1)
 
+    finally:
+
+        sleep(0.1)
         FX.stop_streaming(devId)
         sleep(0.2)
         FX.close(devId)

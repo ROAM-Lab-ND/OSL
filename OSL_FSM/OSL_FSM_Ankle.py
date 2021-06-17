@@ -48,7 +48,7 @@ try:
 
     if calChoice == 1:
 
-        calData = stor.calLoad(1)
+        calData = stor.calLoad(devId)
         print('Data Loaded Successfully')
 
     else:
@@ -80,7 +80,7 @@ spi.max_speed_hz=1000000
 STATES = (0, 1, 2, 3)
 stiffAnk = (0.03, 0.06, 0.08, 0.05) # Nm/deg/kg
 dampAnk = (0.001, 0.0003, 0.00015, 0.0003) # Nms/deg/kg
-equilAnk = (0, -5, 5, 0, 0) # ankle degrees from vertical, 0, -5, 10, 0 (positive plantarflexion)
+equilAnk = (0, -5, 5, 0) # ankle degrees from vertical, 0, -5, 10, 0 (positive plantarflexion)
 
 usrWeight = 72 # [kgs]
 
@@ -89,7 +89,6 @@ GAINSAnk = {'kp': 40, 'ki': 400, 'K': 50, 'B': 650, 'FF': 128}
 # Read initial angle
 actDataAnk = FX.read_device(devId)
 angInitAnk = actDataAnk.mot_ang
-
 
 # Set gains (in order: kp, ki, kd, K, B & ff)
 FX.set_gains(devId, GAINSAnk['kp'], GAINSAnk['ki'], 0, GAINSAnk['K'], GAINSAnk['B'], GAINSAnk['FF'])

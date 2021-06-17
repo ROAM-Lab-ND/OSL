@@ -2,9 +2,9 @@
 ##################################### OPEN #####################################
 This package holds the functions for opening and closing the actuators for knee-ankle configuration
 
-Last Update: 4 June 2021
+Last Update: 16 June 2021
 Updates:
-    - Created
+    - Fixed syntax errors regarding FX class object and imports
 #################################### CLOSE #####################################
 '''
 
@@ -16,6 +16,7 @@ import math
 
 # Actuator Modules (Most Start with fx)
 from flexsea import fxUtils as fxu
+from flexsea import fxEnums as fxe
 
 from OSL_Modules.OSL_Calibration_Dual import OSL_Constants as osl
 
@@ -61,12 +62,13 @@ def devOpen(FX):
 
     return devId
 
-def devClose(devId):
+def devClose(devId,FX):
 
     '''
     Function for closing streams to Dephy actuators
     Inputs:
         devId - List of device ids currently open and streaming
+        FX - Class object with flexSEA Dephy functions for opening and streaming
     Outputs:
         None
     '''
