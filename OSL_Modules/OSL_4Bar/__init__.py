@@ -1,8 +1,8 @@
 '''
 ##################################### OPEN #####################################
-Filler file to flag this directory as importable.
+Intialization file to flag directory as importable for python.
 
-NOTE: This file is currently empty, but may change in the future.
+NOTE: This file currently is empty. This may change in future versions
 
 Last Update: 26 May 2021
 Updates: Created
