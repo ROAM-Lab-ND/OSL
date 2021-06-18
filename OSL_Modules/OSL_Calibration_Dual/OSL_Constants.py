@@ -29,6 +29,7 @@ accelConv = 8192
 dtMilli = 0.001
 dtCenti = 0.01
 dtDeci = 0.1
+dtSec = 1.0
 
 # Dephy Actuator Stiffness and Damping Parameters
 stiffK = ((0.096*deg2count)/np.sqrt(3))/(1000*2**9)
@@ -41,3 +42,6 @@ pChan1 = 1
 # Device IDs for Knee and Ankle actuators
 devKnee = 17763
 devAnk = 14449
+
+# Battery Voltage Threshold (mV)
+threshVolt = 28000

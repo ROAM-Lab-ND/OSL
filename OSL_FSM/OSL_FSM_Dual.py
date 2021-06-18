@@ -2,9 +2,9 @@
 ##################################### OPEN #####################################
 This script is the original finite state machine designed for walking on the Open Source Leg (OSL) knee-ankle configuration.
 
-Last Update: 11 June 2021
+Last Update: 16 June 2021
 Updates:
-    - Created
+    - Updated to match syntax of OSL_FSM_Ankle.py
 #################################### CLOSE #####################################
 '''
 
@@ -118,8 +118,11 @@ stateCur = STATES[0]
 threshForceOn = 15
 threshForceOff = 8
 
-# Dorsiflexion Threshold for Late Stance Trigger
+# Dorsiflexion Threshold (Degrees) for Late Stance Trigger
 threshDF = -10
+
+# Angular Velocity Threshold (Rad/Sec) for Late Swing Trigger
+threshRot = 0.3
 
 # Initializing Force Sensor Readings for Previous Time Steps
 pad0Val = pad0ValPrev1 = pad0ValPrev2 = pad1Val = pad1ValPrev1 = pad1ValPrev2  = 0

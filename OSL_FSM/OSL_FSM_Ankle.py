@@ -175,6 +175,7 @@ try:
                         pad1ValMax = pad1Val
 
             else:
+
                 #if pad_value_1 < 0.7*max_pressure_value_1 and pad_value_0 > 0.5*max_pressure_value_0: # add an additional nested if statement related to the angle position
                 if jointAnk < threshDF:
 
@@ -227,7 +228,7 @@ try:
 
         FX.send_motor_command(devId, fxe.FX_IMPEDANCE, motDesAnk)
 
-        sleep(0.1)
+        sleep(osl.dtCenti)
 
 except Exception as error:
 
