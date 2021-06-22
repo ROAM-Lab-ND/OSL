@@ -119,10 +119,12 @@ def angleCal(devId, FX, volt=750):
     # Set Motor Rotation Value Based On Device ID
     if devId == osl.devAnk:
 
+        romJoint = 30
         romMot = 124
 
     else:
 
+        romJoint = 120
         romMot = romJoint
 
     # Alert User Actuator is About to be Run
