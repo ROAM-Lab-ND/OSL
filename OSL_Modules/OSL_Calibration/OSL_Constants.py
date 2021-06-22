@@ -4,9 +4,10 @@ This script houses the parameters and conversion factors that will be used with 
 
 The parameters stored in this script pertain to various factors of the control scheme, ranging from general conversion units to sensor specifics.
 
-Last Update: 8 June 2021
+Last Update: 21 June 2021
 Updates:
-    - Changed updates syntax to match other scripts for easier parsing
+    - Added Time Steps and Time Lengths Parameters
+    - Added Battery Voltage Parameters
 #################################### CLOSE #####################################
 '''
 
@@ -25,8 +26,15 @@ deg2count = 2**14/360
 gyroConv = 32.8
 accelConv = 8192
 
-# Time Step
-dt = 0.001
+# Time Steps (sec)
+dtMilli = 0.001
+dtCenti = 0.01
+dtDeci = 0.1
+dtSec = 1.0
+
+# Time Lengths (sec)
+sec10 = 10
+sec100 = 100
 
 # Dephy Actuator Stiffness and Damping Parameters
 stiffK = ((0.096*deg2count)/np.sqrt(3))/(1000*2**9)
@@ -39,3 +47,7 @@ pChan1 = 1
 # Device IDs for Knee and Ankle actuators
 devKnee = 17763
 devAnk = 14449
+
+# Battery Voltage Threshold (mV) and Checking Rate (min)
+batCheckRate = 1
+voltThresh = 28000

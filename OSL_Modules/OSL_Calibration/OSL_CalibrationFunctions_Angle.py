@@ -2,14 +2,17 @@
 ##################################### OPEN #####################################
 This package holds the functions called by OSL_Calibration_Package.py to calibrate the Angles in the Dephy actuator
 
-Last Update: 16 June 2021
+Last Update: 21 June 2021
 Updates:
-    - Updated bpdJ calculation to set value to -2 if no external encoder is attached to avoid issues with division by zero.
+    - Improved Comments and Documentation
+    - Updated main function to use OSL_CalibrationFunctions_DeviceOpenClose for opening and closing devices
+    - Updated delays to use parameters from OSL_Constants
 #################################### CLOSE #####################################
 '''
 
 #################################### IMPORTS ###################################
 
+# Imports for Standard Python
 from time import sleep, time, strftime
 import os, sys
 import math
@@ -17,248 +20,239 @@ import numpy as np
 import scipy as sp
 import yaml
 
-# Actuator Modules (Most Start with fx)
+# Imports for FlexSEA
 from flexsea import flexsea as fx
 from flexsea import fxEnums as fxe
+
+# Imports for OSL
 from OSL_Modules.OSL_Calibration import OSL_Constants as osl
 from OSL_Modules.OSL_Calibration import OSL_Calibration_Package as pac
+from OSL_Modules.OSL_Calibration import OSL_CalibrationFunctions_DeviceOpenClose as opcl
 
-################################# CALIBRATION ##################################
-def angleZero(devId,FX,volt):
+############################# FUNCTION DEFINITIONS #############################
+
+def angleZero(devId, FX, volt):
 
     '''
-    This function is called by angleCal to determine the Encoder Values at Limit Points of the Knee (0 Degrees and 120 Degrees) or Ankle (0 Degrees and 30 Degrees)
+    Function for determining encoder values at hard stops for knee or ankle of Open Source Leg (OSL).
+    Inputs:
+        devId - Device ID of actuator to encoder values at hard stop for
+        FX - Class object with flexSEA Dephy functions for reading actuator data
+        volt - Voltage value to run motor at
+    Outputs:
+        motFinal - Motor encoder value at hard stop
+        jointFinal - Joint encoder value at hard stop
     '''
 
+    # Alert User Actuator is About to be Run
     print('Running Actuator...')
-    sleep(1)
+    sleep(2*osl.dtDeci)
 
-    # Start running motor at inputted voltage
+    # Send Motor Command
     FX.send_motor_command(devId, fxe.FX_VOLTAGE, volt)
 
-    # Grab Current Encoder Value
+    # Read Current Motor Information and Grab Encoder
     actData = FX.read_device(devId)
     motCur = actData.mot_ang
     jointCur = actData.ank_ang
-    sleep(0.3)
 
-    # Print Encoder Value to Screen
-    print(motCur,jointCur)
+    # Print Encoder to Screen
+    print(motCur, jointCur)
 
-    # Boolean for tracking when to cut the motor
+    # Delay
+    sleep(osl.dtDeci)
+
+    # Initialize Boolean for Calibration Sequence
     run = True
 
     while run:
 
-        sleep(0.1)
-
-        # Set Tracking Angle to Previously Measured Angle
+        # Set Encoder Historical Data
         motPrev = motCur
         jointPrev = jointCur
 
-        # Grab Current Angle Value and Print to Screen
+        # Read Current Motor Information and Grab Encoder
         actData = FX.read_device(devId)
         motCur = actData.mot_ang
         jointCur = actData.ank_ang
 
-        # Calculate Difference between Tracking Angle and Current Angle
+        # Calculate Difference Between Previous and Current Encoder
         angDiffM = motCur - motPrev
         angDiffJ = jointCur - jointPrev
 
-        print(motCur,angDiffM,jointCur,angDiffJ)
+        print(motCur, angDiffM, jointCur, angDiffJ)
 
-        # If calculated difference is smaller than half a degree movement, the
-        # limit has been reached
+        # Delay
+        sleep(osl.dtCenti)
+
+        # If Motor Rotation is Below Threshold, System is at Hard Stop
         if abs(angDiffM) <= osl.deg2count/2:
 
-            # Print difference and ticks per degree to screen
-            print('angDiff: ', angDiffM)
-            print('degToCount/2: ', osl.deg2count/2)
-
-            # Set motor voltage to zero to stop the actuator
+            # Send Motor Command to Stop
             FX.send_motor_command(devId, fxe.FX_VOLTAGE, 0)
 
-            # Grab final encoder value reading
+            # Read Current Motor Information and Grab Encoder
             actData = FX.read_device(devId)
             motFinal = actData.mot_ang
             jointFinal = actData.ank_ang
 
-            # Set boolean to exit loop
+            # Set Run Flag to False
             run = False
             print('Completed Min/Max')
 
-            # Return Calibration Value for Encoders for future use
-            return motFinal,jointFinal
+    # Return Encoder Hard Stop Values
+    return motFinal, jointFinal
 
-def angleCal(devId,FX,romJoint,volt=750):
+def angleCal(devId, FX, volt=750):
 
     '''
-    This function is used to determine the calibration values of the joint angle for the Knee or Ankle actuator
+    Function for calibrating angle-related data for knee or ankle of Open Source Leg (OSL).
+    Inputs:
+        devId - Device ID of actuator to encoder values at hard stop for
+        FX - Class object with flexSEA Dephy functions for reading actuator data
+        volt - Voltage value to run motor at
+    Outputs:
+        motFinal - Motor encoder value at hard stop
+        jointFinal - Joint encoder value at hard stop
     '''
 
-    if romJoint==30:
-        romMot=124
+    # Set Motor Rotation Value Based On Device ID
+    if devId == osl.devAnk:
+
+        romJoint = 30
+        romMot = 124
+
     else:
-        romMot=romJoint
 
+        romJoint = 120
+        romMot = romJoint
+
+    # Alert User Actuator is About to be Run
     print('Running Actuator to Min and Max...')
-    sleep(1)
+    sleep(2*osl.dtDeci)
 
-    # Call to angleZero function for determining encoder value at full extension
-    # Full extension is considered when the knee is straight to hard stop
-    # Full extension is considered when the ankle is in plantar flexion
-    angExtM,angExtJ = angleZero(devId,FX,abs(volt))
-    sleep(osl.dt)
+    # Calibrate Encoder Values at Extension Hard Stop (PF For Ankle)
+    angExtM, angExtJ = angleZero(devId, FX, abs(volt))
+    sleep(osl.dtMilli)
 
-    # Call to angleZero function for determining encoder value at full flexion
-    # Full flexion is considered when then knee is bent to hard stop
-    # Full flexion is considered when the ankle is in dorsiflexion
-    angFlexM,angFlexJ = angleZero(devId,FX,-abs(volt))
-    sleep(osl.dt)
+    # Calibrate Encoder Values at Flexion Hard Stop (DF For Ankle)
+    angFlexM, angFlexJ = angleZero(devId, FX, -abs(volt))
+    sleep(osl.dtMilli)
 
-    # Calculate the ticks per degree conversion value for the motor and joint
+    # Calculate Bits Per Degree Ratio
     bpdM = (angExtM - angFlexM)/romMot
     bpdJ = (angExtJ - angFlexJ)/romJoint
 
+    # If No Joint Encoder Attached, Set Bits Per Degree Ratio to -2
     if bpdJ == 0:
 
         bpdJ = -2
 
-    # Print ticks per degree ratio to screen
+    # Print Information to User
     print('Bit to Degree Motor Ratio: ', bpdM)
     print('Bit to Degree Joint Ratio: ', bpdJ)
-    sleep(0.5)
+
     print('Confirmation Test...')
-    sleep(0.5)
+    sleep(2*osl.dtDeci)
 
-    # Set boolean for tracking when to cut the motor
+    # Initialize Boolean for Full Sweep
     run = True
-    print('%-15s %-7s %-7s %-15s %-7s %-7s' % ('Current Motor: ','Degrees','Radians','Current Joint: ','Degrees','Radians'))
-    sleep(0.5)
 
-    # Set motor to twice the calibration voltage for quicker run time
-    FX.send_motor_command(devId,fxe.FX_VOLTAGE,volt*2)
+    print('%-15s %-7s %-7s %-15s %-7s %-7s' % ('Current Motor: ', 'Degrees', 'Radians', 'Current Joint: ', 'Degrees', 'Radians'))
+    sleep(2*osl.dtDeci)
 
-    # Grab encoder angle value (need uncalibrated value angVal for later)
+    # Send Motor Command (2x Passed In Voltage)
+    FX.send_motor_command(devId, fxe.FX_VOLTAGE, volt*2)
+
+    # Read Current Motor Information and Grab Encoder
     actData = FX.read_device(devId)
     motVal = actData.mot_ang
     jointVal = actData.ank_ang
 
-    # Calculate the calibrated value of the current angle, convert to degrees
-    # Convert calibrated value of the current angle to radians
+    # Calculate Current Encoder Angles (Degs,Rads)
     motCur = (angExtM - motVal)/bpdM
-    motCurRad = np.multiply(motCur,osl.deg2rad)
+    motCurRad = np.multiply(motCur, osl.deg2rad)
 
     jointCur = (angExtJ - jointVal)/bpdJ
-    jointCurRad = np.multiply(jointCur,osl.deg2rad)
+    jointCurRad = np.multiply(jointCur, osl.deg2rad)
 
-    sleep(0.3)
-
-    # Print calibrated angle in degrees and radians to screen
+    # Print Information to User
     print('%-15s %-7f %-7f %-15s %-7f %-7f' % ('Current Motor: ', motCur, motCurRad, 'Current Ankle:', jointCur, jointCurRad))
+
+    sleep(3*osl.dtCenti)
 
     while run:
 
-        # Set tracking angle to previous uncalibrated value
+        # Set Encoder Historical Data
         motPrev = motVal
         jointPrev = jointVal
 
-        # Set motor to twice the calibration voltage for quicker run time
-        FX.send_motor_command(devId,fxe.FX_VOLTAGE,volt*2)
-
-        # Grab encoder angle value
+        # Read Current Motor Information and Grab Encoder
         actData = FX.read_device(devId)
         motVal = actData.mot_ang
         jointVal = actData.ank_ang
 
-        # Calculate calibrated encoder angle in degrees and radians
+        # Calculate Current Encoder Angles (Degs,Rads)
         motCur = (angExtM - motVal)/bpdM
-        motCurRad = np.multiply(motCur,osl.deg2rad)
+        motCurRad = np.multiply(motCur, osl.deg2rad)
 
         jointCur = (angExtJ - jointVal)/bpdJ
-        jointCurRad = np.multiply(jointCur,osl.deg2rad)
+        jointCurRad = np.multiply(jointCur, osl.deg2rad)
 
-        # Calculate uncalibrated difference between tracking and current angle
+        # Calculate Difference Between Previous and Current Encoder
         angDiffM = motVal - motPrev
 
-        # Print current calibrated angle value in degrees and radians to screen
-        print('%-15s %-7f %-7f %-15s %-7f %-7f' % ('Current Motor:',motCur,motCurRad,'Current Ankle:',jointCur,jointCurRad))
-        sleep(0.05)
+        # Print Information to User
+        print('%-15s %-7f %-7f %-15s %-7f %-7f' % ('Current Motor:', motCur, motCurRad, 'Current Ankle:', jointCur, jointCurRad))
 
-        # If calculated difference is smaller than half a degree movement, the
-        # limit has been reached
+        # Delay
+        sleep(osl.dtCenti)
+
+        # If Motor Rotation is Below Threshold, System is at Hard Stop
         if abs(angDiffM) <= osl.deg2count/2:
 
-            # Set motor voltage to zero to stop the motor
+            # Send Motor Command to Stop
             FX.send_motor_command(devId, fxe.FX_VOLTAGE, 0)
 
-            # Set boolean to exit the loop
+            # Set Run Flag to False
             run = False
             print('Completed Test Run')
 
     print('Angle Calibration Complete.')
-    sleep(0.5)
+    sleep(osl.dtDeci)
 
-    # Return encoder value at each limit point and measured conversion value
-    return angExtM,angFlexM,bpdM,angExtJ,angFlexJ,bpdJ
+    # Return Calibration Data
+    return angExtM, angFlexM, bpdM, angExtJ, angFlexJ, bpdJ
 
+############################# MAIN FUN DEFINITIONS #############################
 
-def main(dev):
+def main():
 
     '''
     For standalone calling of the angle calibration functions
     '''
 
-    try:
-        if dev == 0:
-            rangeOfMotion = 120
-        elif dev == 1:
-            rangeOfMotion = 30
-        else:
-            raise Exception('Invalid joint chosen')
-
-    except Exception as error:
-
-        print('Error occurred')
-        print(error)
-        raise
-
-    #import numpy as np
-    thisdir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    sys.path.append(thisdir)
-
-    # Find directory
-    scriptPath = os.path.dirname(os.path.abspath(__file__))
-    fpath = scriptPath + '/Ports_Single.yaml'
-    ports, baudRate = fxu.load_ports_from_file(fpath)
-
-    # Standard setup that is not crucial for understanding the script
-    print(ports,'\n',baudRate)
-    port = str(ports[0])
-    baudRate=int(baudRate)
-    debugLvl=6
-
-    # Connect to actuator and open data stream
+    # Create Class Object for Actuator Commands
     FX = fx.FlexSEA()
 
-    devId = FX.open(port,baudRate,debugLvl)
-    FX.start_streaming(devId,freq=100,log_en=False)
-    sleep(0.1)
+    # Open Device ID and Start Streaming
+    devId = opcl.devOpen(FX)
 
-    calData = pac.CalDataSingle(1,dev)
+    calData = pac.CalDataSingle()
 
     try:
 
-        angM1,angM2,bpdM,angJ1,angJ2,bpdJ = angleCal(devId,FX,rangeOfMotion)
+        angM1, angM2, bpdM, angJ1, angJ2, bpdJ = angleCal(devId, FX)
+
         calData.angExtMot = angM1
         calData.angFlexMot = angM2
         calData.bpdMot = bpdM
 
-        if rangeOfMotion == 30:
-            calData.angExtJoint = angJ1
-            calData.angFlexJoint = angJ2
-            calData.bpdJoint = bpdJ
-            calData.angVertJoint = calData.angExtJoint + 20*calData.bpdJoint
+        calData.angExtJoint = angJ1
+        calData.angFlexJoint = angJ2
+        calData.bpdJoint = bpdJ
+
+        calData.angVertJoint = calData.angExtJoint - 15*calData.bpdJoint
 
     except Exception as error:
 
@@ -267,18 +261,8 @@ def main(dev):
 
     finally:
 
-        # Disable the controller, send 0 PWM
-        sleep(0.05)
-        FX.send_motor_command(devId, fxe.FX_VOLTAGE, 0)
-        sleep(0.1)
-
-        FX.stop_streaming(devId)
-        sleep(0.2)
-        FX.close(devId)
-        sleep(0.1)
-        print("Graceful Exit Complete")
+        opcl.devClose(devId, FX)
 
 if __name__ == '__main__':
 
-    dev = int(input('Which joint is this for? (0 for Knee, 1 for Ankle): '))
-    main(dev)
+    main()

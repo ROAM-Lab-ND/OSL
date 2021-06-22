@@ -2,23 +2,26 @@
 ##################################### OPEN #####################################
 This package houses the functions for calculating the position and transmission ratio mapping of the ankle for the Open Source Leg (OSL).
 
-Last Update: 16 June 2021
+NOTE: THIS MODULE IS DESIGNED WITH RESPECT TO AN ANKLE JOINT SPACE RANGING FROM -15 DEGREES (DF) TO 15 DEGREES (PF). VERTICAL ORIENTATION OF THE ANKLE CORRESPONDS TO A VALUE OF 0 DEGREES.
+
+Last Update: 21 June 2021
 Updates:
-    - Removed devId as an unnecessary input parameter
+    - Improved Comments and Documentation
 #################################### CLOSE #####################################
 '''
 
 ############################### PACKAGE IMPORTS ################################
 
-# Standard Python Modules
+# Imports for Standard Python
 from time import sleep, time, strftime
 import numpy as np
 
-# Actuator Modules (Most Start with fx)
+# Imports for FlexSEA
 from flexsea import flexsea as fx
 from flexsea import fxUtils as fxu
 from flexsea import fxEnums as fxe
 
+# Imports for OSL
 from OSL_Modules.OSL_Calibration_Dual import OSL_Constants as osl
 from OSL_Modules.OSL_Calibration_Dual import OSL_CalibrationFunctions_Storage as stor
 from OSL_Modules.OSL_Calibration_Dual import OSL_CalibrationFunctions_Homing as home
@@ -36,16 +39,16 @@ def anklePosMappingJoint(jointDesDeg,calData):
         motDesTick - Tick value to pass to FX.send_motor_command() for desired ankle angle
     '''
 
-    # Polyfit coefficients
+    # Polyfit Coefficients (Joint to Motor)
     polyCoef = [6.904006316218462e-6, 2.855672135787040e-5, 9.847287004188480e-4, 0.008459960933132, 3.432060542616289, 1.088851620694406e-15]
 
-    # Calculate desired motor position in degrees
+    # Calculate Desired Motor Position (Degrees)
     motDesDeg = np.polyval(polyCoef,jointDesDeg)
 
-    # Calculate motor desired offset in degrees and ticks
+    # Calculate Desired Motor Position (Ticks)
     motDesTick = motDesDeg*calData.bpdMot[1] + calData.angVertMot
 
-    # Return desired motor position in ticks
+    # Return Desired Motor Position (Ticks)
     return motDesTick
 
 def anklePosMappingMot(motAng,calData):
@@ -59,12 +62,16 @@ def anklePosMappingMot(motAng,calData):
         jointAng - Current joint angle in degrees
     '''
 
+    # Polyfit Coefficients (Motor to Joint)
     polyCoef = [1.139469359425673e-11,2.961158110823952e-8,-1.192721072846565e-5,-2.636391981738515e-4,0.293325991108028,0.008567682193295]
 
+    # Calculate Desired Motor Position (Degrees)
     motAngDeg = (motAng - calData.angVertMot)/calData.bpdMot[1]
 
+    # Calculate Desired Joint Position (Degrees)
     jointAng = np.polyval(polyCoef,motAngDeg)
 
+    # Return Desired Joint Position (Degrees)
     return jointAng
 
 def ankleTRMappingJoint(jointAng,calData):
@@ -78,17 +85,16 @@ def ankleTRMappingJoint(jointAng,calData):
         desTR - Calculated transmission ratio to use in stiffness/damping conversions based on current joint position
     '''
 
-    # Polyfit coefficients
-    # Polyfit was conducted with the ankle angle already shifted to [-20,10] range
+    # Polyfit Coefficients (Joint to TR)
     polyCoef = [2.601481109902332e-6, 9.858841845509533e-6, -3.218758554395808e-4, -8.191030841061497e-4, 0.088589729972813, 0.312298762934481, 41.953174794753980]
 
-    # Calculate joint angle in degrees from vertical
+    # Calculate Joint Angle from Vertical Orientation (Degrees)
     jointAngDeg = (jointAng - calData.angVertJoint)/calData.bpdJoint[1]
 
-    # Calculate desired transmission ratio based on current joint angle
+    # Calculate Transmission Ratio Corresponding to Current Joint Angle
     desTR = np.polyval(polyCoef,jointAngDeg)
 
-    # Return desired transmission ratio
+    # Return Transmission Ratio
     return desTR
 
 def ankleTRMappingMot(motAng,calData):
@@ -102,17 +108,16 @@ def ankleTRMappingMot(motAng,calData):
         desTR - Calculated transmission ratio to use in stiffness/damping conversions based on current joint position
     '''
 
-    # Polyfit coefficients
-    # Polyfit was conducted with the ankle angle already shifted to [-20,10] range
+    # Polyfit Coefficients (Motor to TR)
     polyCoef = [1.906223726201300e-10, -3.700386409901678e-9, 2.957465762186836e-7, 7.791368079535717e-6, 0.005526776998495, 0.075173504601046, 42.152801658472660]
 
-    # Calculate motor angle in degrees from vertical
+    # Calculate Motor Angle from Vertical Orientation (Degrees)
     motAngDeg = (motAng - calData.angVertMot)/calData.bpdMot[1]
 
-    # Calculate desired transmission ratio based on current motor angle
+    # Calculate Transmission Ratio Corresponding to Current Joint Angle
     desTR = np.polyval(polyCoef,motAngDeg)
 
-    # Return desired transmission ratio
+    # Return Transmission Ratio
     return desTR
 
 def main(map):

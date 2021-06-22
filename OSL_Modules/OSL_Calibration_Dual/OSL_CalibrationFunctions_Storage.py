@@ -2,18 +2,19 @@
 ##################################### OPEN #####################################
 This package holds the functions for dumping and loading calibration data to yaml files for future use with the Open Source Leg (OSL)
 
-Last Update: 9 June 2021
+Last Update: 21 June 2021
 Updates:
-    - Updated imports
+    - Improved Comments and Documentation
 #################################### CLOSE #####################################
 '''
 
 #################################### IMPORTS ###################################
 
+# Imports for Standard Python
 import math
 import yaml
 
-# Actuator Modules (Most Start with fx)
+# Imports for FlexSEA
 from flexsea import flexsea as fx
 from flexsea import fxEnums as fxe
 
@@ -27,9 +28,11 @@ def calDump(calData):
         calData - Class structure storing the calibration data to save
     '''
 
+    # Open Appropriate File
     pFile = open('Dual_Cal.yaml','w')
 
-    pDoc = yaml.dump(calData,pFile,Dumper=yaml.Dumper)
+    # Dump Calibration Data to File and Close
+    pDoc = yaml.dump(calData, pFile, Dumper = yaml.Dumper)
     pFile.close()
 
 def calLoad():
@@ -42,12 +45,16 @@ def calLoad():
         calData - Class structure storing the calibration data
     '''
 
+    # Open Appropriate File
     pFile = open('Dual_Cal.yaml')
 
-    calData = yaml.load(pFile,Loader=yaml.Loader)
+    # Load Calibration Data from File and Close
+    calData = yaml.load(pFile, Loader = yaml.Loader)
     pFile.close()
 
     return calData
+
+############################# MAIN FUN DEFINITIONS #############################
 
 def main():
 

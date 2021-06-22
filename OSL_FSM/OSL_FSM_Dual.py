@@ -2,15 +2,16 @@
 ##################################### OPEN #####################################
 This script is the original finite state machine designed for walking on the Open Source Leg (OSL) knee-ankle configuration.
 
-Last Update: 11 June 2021
+Last Update: 21 June 2021
 Updates:
-    - Created
+    - Fixed sign error for rotation calculation
+    - Improved Comments and Documentation
 #################################### CLOSE #####################################
 '''
 
 ############################### PACKAGE IMPORTS ################################
 
-# Standard Python Modules
+# Imports for Standard Python
 from time import sleep, time
 import datetime
 import os, sys
@@ -18,14 +19,16 @@ import math
 import numpy as np
 import yaml
 
+# Imports for Force/EMG Sensors
 from signal import signal, SIGINT
 import spidev
 
-# Actuator Modules (Most Start with fx)
+# Imports for FlexSEA
 from flexsea import flexsea as fx
 from flexsea import fxUtils as fxu
 from flexsea import fxEnums as fxe
 
+# Imports for OSL
 from OSL_Modules.OSL_Calibration_Dual import OSL_Constants as osl
 from OSL_Modules.OSL_Calibration_Dual import OSL_Calibration_Package as pac
 from OSL_Modules.OSL_Calibration_Dual import OSL_CalibrationFunctions_Homing as home
@@ -37,110 +40,147 @@ from OSL_Modules.OSL_Torque_Dual import OSL_TorqueFunctions_StiffnessDamping as 
 
 #################################### SETUP #####################################
 
-# Connect to actuator and open data stream
+# Create Class Object for Actuator Commands
 FX = fx.FlexSEA()
 
+# Open Device ID and Start Streaming
 devId = opcl.devOpen(FX)
 
+# Determine How Calibration Data will be Provided
 calChoice = int(input('Use existing calibration data or run calibration sequence (1 for Existing, 2 for New Data): '))
 
 try:
 
     if calChoice == 1:
 
+        # Load Calibration Data Previously Stored in Ankle_Cal.yaml
         calData = stor.calLoad()
         print('Data Loaded Successfully')
 
     else:
 
+        # Use as Catch All to Fall Back on Rerunning Calibration as a Precaution
         if calChoice != 2:
 
             print('Invalid option chosen, running calibration sequence as back up...')
 
 
+        # Create Class Object for Calibration Data, Run Calibration Sequence
         calData = pac.CalDataDual()
-        calData = pac.dualCalMot(devId,FX,calData)
+        calData = pac.dualCalMot(devId, FX, calData)
 
         print('Calibration successful...')
 
 except Exception as error:
 
+    # Print Out Error that Occurred
     print('Error Occurred:')
     print(error)
-    opcl.devClose()
+
+    # Gracefully Exit Script by Closing Stream and Device ID
+    opcl.devClose(devId, FX)
     raise
 
+# Transmission Ratio Object
 TR = [calData.bpdMot[0]/osl.deg2count, 0]
 
+# States (Unspecified, Early Stance, Late Stance, Early Swing, Late Swing)
 spi = spidev.SpiDev()
 spi.open(0, 0)
 spi.max_speed_hz=1000000
 
-# Setting up States
-# States are (Unspecified, Early_Stance, Late_Stance, Early Swing, Late Swing)
-STATES: tuple = (0, 1, 2, 3, 4)
-stiffAnk: tuple = (0.03, 0.06, 0.08, 0.05, 0.05) # Nm/deg/kg
-stiffKnee: tuple = ()
-dampAnk: tuple = (0.001, 0.0003, 0.00015, 0.0003, 0.0003) # Nms/deg/kg
-dampKnee: tuple = ()
-equilAnk: tuple = (0, -5, 5, 0, 0) # ankle degrees from vertical, 0, -5, 10, 0 (positive plantarflexion)
-equilKnee: tuple = ()
+# States (Unspecified, Early_Stance, Late_Stance, Early Swing, Late Swing)
+STATES = (0, 1, 2, 3, 4)
 
-usrWeight = 72 # [kgs]
+# Joint Stiffness (Nm/deg/kg)
+stiffKnee = (0, 0.15, 0.20, 0.02, 0.02)
+stiffAnk = (0.03, 0.06, 0.08, 0.05, 0.05)
 
-GAINSAnk = {'kp': 40, 'ki': 400, 'K': 50, 'B': 650, 'FF': 128}
+# Joint Damping (Nms/deg/kg)
+dampKnee = (0, 0, 0, 0.0012, 0.0012)
+dampAnk = (0.001, 0.0003, 0.00015, 0.0003, 0.0003)
+
+# Equilibrium Positions Relative to Vertical Orientation
+equilKnee = (0, 2, 2, 50, 2)
+equilAnk = (0, -5, 5, 0, 0) # (DF (-), PF (+))
+
+# Weight of User (kg)
+usrWeight = 72
+
+# Actuator Impedance Gains Initialization
 GAINSKnee = {'kp': 40, 'ki': 400, 'K': 50, 'B': 650, 'FF': 128}
+GAINSAnk = {'kp': 40, 'ki': 400, 'K': 50, 'B': 650, 'FF': 128}
 
-# Read initial angle
+# Read Initial Angle
 actDataKnee = FX.read_device(devId[0])
 actDataAnk = FX.read_device(devId[1])
-angInitKnee = actDataKnee.mot_ang
-angInitAnk = actDataAnk.mot_ang
+motKnee = actDataKnee.mot_ang
+motAnk = actDataAnk.mot_ang
 
 
-# Set gains (in order: kp, ki, kd, K, B & ff)
+# Set Impedance Gains
 FX.set_gains(devId[0], GAINSKnee['kp'], GAINSKnee['ki'], 0, GAINSKnee['K'], GAINSKnee['B'], GAINSKnee['FF'])
 FX.set_gains(devId[1], GAINSAnk['kp'], GAINSAnk['ki'], 0, GAINSAnk['K'], GAINSAnk['B'], GAINSAnk['FF'])
 
-# Setpoint = initial angle
-FX.send_motor_command(devId[0], fxe.FX_IMPEDANCE, angInitKnee)
-FX.send_motor_command(devId[1], fxe.FX_IMPEDANCE, angInitAnk)
+# Initialize Motor Position at Initial Angle
+FX.send_motor_command(devId[0], fxe.FX_IMPEDANCE, motKnee)
+FX.send_motor_command(devId[1], fxe.FX_IMPEDANCE, motAnk)
 
-# Select transition rate and positions
-#num_time_steps = int(500)
-#sleep(0.4)
-
+# Initialize in Unspecified state
 stateCur = STATES[0]
 
 # Force Sensor On/Off Thresholds
 threshForceOn = 15
 threshForceOff = 8
 
-# Dorsiflexion Threshold for Late Stance Trigger
+# Dorsiflexion Threshold (Degrees) for Late Stance Trigger
 threshDF = -10
 
-# Initializing Force Sensor Readings for Previous Time Steps
-pad0ValPrev1 = pad0ValPrev2 = pad1ValPrev1 = pad1ValPrev2  = 0
+# Angular Velocity Threshold (Rad/Sec) for Late Swing Trigger
+threshRot = 0.3
+
+# Initializing Force Sensor Readings for Current/Previous Time Steps
+pad0Val = pad0ValPrev1 = pad0ValPrev2 = pad1Val = pad1ValPrev1 = pad1ValPrev2  = 0
 pad0ValMax = pad1ValMax = 0
 
+# Set First Pass Flag for Entry into Early Stance
 firstPass = True
 
-minEarlyStance = 500 # milliseconds
+# Battery Checking Threshold (sec)
+minBatCheck = 60
+batTime = datetime.datetime.now()
+
+# Early Stance Duration Threshold (msec)
+minEarlyStance = 500
+
+############################# FINITE STATE MACHINE #############################
 
 try:
 
     while True:
 
+        # If Checking Threshold Has Passed, Check Battery Voltage
+        if (datetime.datetime.now() - batTime).seconds > minBatCheck:
+
+            bat.voltCheck(devId, FX)
+            batTime = datetime.datetime.now()
+
+        # Set Knee Motor Encoder Historical Data
+        motKneePrev = motKnee
+
+        # Set Force Sensor Historical Data
         pad0ValPrev2 = pad0ValPrev1
         pad0ValPrev1 = pad0Val
 
         pad1ValPrev2 = pad1ValPrev1
         pad1ValPrev1 = pad1Val
 
-        padVal0 = readadc(osl.pChan0) # toe
-        padVal1 = readadc(osl.pChan1) # heel
-        print('Pressure Pad Value: %d %d' %(padVal0, padVal1))
+        # Read Current Force Sensor Data
+        pad0Val = pres.readadc(osl.pChan0, spi) # toe
+        pad1Val = pres.readadc(osl.pChan1, spi) # heel
+        print('Pressure Pad Value: %d %d' % (pad0Val, pad1Val))
 
+        # Read Current Motor Information and Grab Motor Encoder
         actDataKnee = FX.read_device(devId[0])
         actDataAnk = FX.read_device(devId[1])
 
@@ -148,66 +188,63 @@ try:
         jointKnee = (motKnee - calData.angExtMot[0])/calData.bpdMot[0]
 
         motAnk = actDataAnk.mot_ang
-        jointAnK = four.anklePosMappingMot(devId[1], motAnk,calData)
-        TR[1] = four.ankleTRMappingMot(devId[1],motAnk,calData)
 
-        desKKnee = tor.motStiffness(usrWeight, stiffKnee[stateCur], TR[0])
-        desBKnee = tor.motDamping(usrWeight, dampKnee[stateCur], TR[0])
+        # Calculate Current Ankle Joint Angle and Transmission Ratio
+        jointAnk = four.anklePosMappingMot(motAnk, calData)
+        TR[1] = four.ankleTRMappingMot(motAnk, calData)
 
-        desKAnk = tor.motStiffness(usrWeight, stiffAnk[stateCur], TR[1])
-        desBAnk = tor.motDamping(usrWeight, dampAnk[stateCur], TR[1])
+        # Calculate Current Angular Velocity of Thigh
+        gyroKnee = (actDataKnee.gyroz*osl.deg2rad)/osl.gyroConv - calData.gyro
+        diffMotKnee = ((motKnee - motKneePrev)*osl.deg2rad)/calData.bpdMot[0]
 
-        desBKnee = 1000
-        desBAnk = 1000
-
-        motDesKnee = calData.bpdMot[0]*equilKnee[stateCur] + calData.angExtMot[0]
-        motDesAnk = four.anklePosMappingJoint(devId[1], equilAnk[stateCur], calData)
-
-        # Control gain constants
-        GAINSAnk['K'], GAINSAnk['B'] = desKAnk, desBAnk
-        GAINSKnee['K'], GAINSKnee['B'] = desKKnee, desBKnee
-
-        # Set gains (in order: kp, ki, kd, K, B & ff)
-        FX.set_gains(devId[0], GAINSKnee['kp'], GAINSKnee['ki'], 0, GAINSKnee['K'], GAINSKnee['B'], GAINSKnee['FF'])
-        FX.set_gains(devId[1], GAINSAnk['kp'], GAINSAnk['ki'], 0, GAINSAnk['K'], GAINSAnk['B'], GAINSAnk['FF'])
-
-        FX.send_motor_command(devId[0], fxe.FX_IMPEDANCE, motDesKnee)
-        FX.send_motor_command(devId[1], fxe.FX_IMPEDANCE, motDesAnk)
+        rotKnee = gyroKnee + diffMotKnee/osl.dtCenti
 
         if stateCur == 0:
 
+            # Print State
             stateName = 'Unspecified'
             print(stateName)
 
-            if pres.forceOn(padVal0, pad0ValPrev1, pad0ValPrev2, threshForceOn) or pres.forceOn(padVal1, pad1ValPrev1, pad1ValPrev2, threshForceOn):
+            # Calculate Desired Motor Damping
+            desBKnee = tor.motDamping(usrWeight, dampKnee[stateCur], TR[0])
+            desBAnk = tor.motDamping(usrWeight, dampAnk[stateCur], TR[1])
+
+            # If Force Sensors Surpass Threshold, Transition to State 1
+            if pres.forceOn(pad0Val, pad0ValPrev1, pad0ValPrev2, threshForceOn) or pres.forceOn(pad1Val, pad1ValPrev1, pad1ValPrev2, threshForceOn):
 
                 stateCur = STATES[1]
                 print('Transitioning to Early Stance')
 
-            sleep(0.01)
-            continue
+        elif stateCur == 1:
 
-        if stateCur == 1:
-
+            # Print State
             stateName = 'Early Stance'
             print(stateName)
 
+            # Calculate Desired Motor Damping
+            desBKnee = 1000
+            desBAnk = 1000
+
+            # If First Entry into State 1, Grab Instance of Entry
             if firstPass:
 
                 firstPass = False
                 firstPassTime = datetime.datetime.now()
                 print('First Pass:', firstPassTime)
 
+            # If Time in State 1 Below Threshold, Print Time Spent So Far
             if (datetime.datetime.now() - firstPassTime).seconds == 0 and (datetime.datetime.now() - firstPassTime).microseconds/1000 < minEarlyStance:
 
-                print((datetime.datetime.now() - time_first_pass).microseconds/1000)
+                print((datetime.datetime.now() - firstPassTime).microseconds/1000)
                 if pad0Val > pad0ValMax:
                         pad0ValMax = pad0Val
                 if pad1Val > pad1ValMax:
                         pad1ValMax = pad1Val
 
+            # If Time in State 1 Surpasses Threshold, Check Ankle Angle
             else:
-                #if pad_value_1 < 0.7*max_pressure_value_1 and pad_value_0 > 0.5*max_pressure_value_0: # add an additional nested if statement related to the angle position
+
+                # If Ankle Angle Surpasses Threshold, Transition to State 2
                 if jointAnk < threshDF:
 
                     stateCur = STATES[2]
@@ -217,45 +254,97 @@ try:
 
                    print('Has not passed dorsiflexion threshold')
 
-            if pres.forceOff(padVal0, pad0ValPrev1, threshForceOff) and pres.forceOff(padVal1, pad1ValPrev1, threshForceOff):
+            # If Force Sensors Below Threshold, Transition to State 3
+            if pres.forceOff(pad0Val, pad0ValPrev1, threshForceOff) and pres.forceOff(pad1Val, pad1ValPrev1, threshForceOff):
 
                 stateCur = STATES[3]
                 print('Transitioning to Swing!')
 
-            sleep(0.01)
-            continue
+        elif stateCur == 2:
 
-        if stateCur == 2:
-
+            # Print State
             stateName = 'Late Stance'
             print(stateName)
 
-            if pres.forceOff(padVal0, pad0ValPrev1, threshForceOff) and pres.forceOff(padVal1, pad1ValPrev1, threshForceOff):
+            # Hardcoded Desired Ankle Damping (Will Be Changed)
+            desBKnee = 2000
+            desBAnk = 2000
+
+            # If Force Sensors Below Threshold, Transition to State 3
+            if pres.forceOff(pad0Val, pad0ValPrev1, threshForceOff) and pres.forceOff(pad1Val, pad1ValPrev1, threshForceOff):
 
                 stateCur = STATES[3]
-                print('Transitioning to Swing!')
+                print('Transitioning to Early Swing')
 
-            sleep(0.01)
-            continue
+        elif stateCur == 3:
 
-        if stateCur == 3:
-
-            stateName = 'Swing'
+            # Print State
+            stateName = 'Early Swing'
             print(stateName)
 
-            if pres.forceOn(padVal0, pad0ValPrev1, pad0ValPrev2, threshForceOn) or pres.forceOn(padVal1, pad1ValPrev1, pad1ValPrev2, threshForceOn):
+            # Hardcoded Desired Ankle Damping (Will Be Changed)
+            desBKnee = 1000
+            desBAnk = 1000
+
+            # If Force Sensors Surpass Threshold, Transition to State 1
+            if pres.forceOn(pad0Val, pad0ValPrev1, pad0ValPrev2, threshForceOn) or pres.forceOn(pad1Val, pad1ValPrev1, pad1ValPrev2, threshForceOn):
 
                 stateCur = STATES[1]
                 firstPass = True
                 print('Transitioning to Early Stance')
 
-            sleep(0.01)
-            continue
+            # If Rotation of Thigh Surpasses Threshold, Transition to State 4
+            if rotKnee < -threshRot:
+
+                stateCur = STATES[4]
+                print('Transitioning to Late Swing')
+
+        elif stateCur == 4:
+
+            # Print State
+            stateName = 'Late Swing'
+            print(stateName)
+
+            # Hardcoded Desired Ankle Damping (Will Be Changed)
+            desBKnee = 1000
+            desBAnk = 1000
+
+            # If Force Sensors Surpass Threshold, Transition to State 1
+            if pres.forceOn(pad0Val, pad0ValPrev1, pad0ValPrev2, threshForceOn) or pres.forceOn(pad1Val, pad1ValPrev1, pad1ValPrev2, threshForceOn):
+
+                stateCur = STATES[1]
+                firstPass = True
+                print('Transitioning to Early Stance')
+
+        # Calculate Desired Motor Stiffness
+        desKKnee = tor.motStiffness(usrWeight, stiffKnee[stateCur], TR[0])
+        desKAnk = tor.motStiffness(usrWeight, stiffAnk[stateCur], TR[1])
+
+        # Calculate Desired Motor Encoder Value
+        motDesKnee = calData.angExtMot[0] - calData.bpdMot[0]*equilKnee[stateCur]
+        motDesAnk = four.anklePosMappingJoint(equilAnk[stateCur], calData)
+
+        # Update Stiffness/Damping Gains
+        GAINSAnk['K'], GAINSAnk['B'] = desKAnk, desBAnk
+        GAINSKnee['K'], GAINSKnee['B'] = desKKnee, desBKnee
+
+        # Set Impedance Gains
+        FX.set_gains(devId[0], GAINSKnee['kp'], GAINSKnee['ki'], 0, GAINSKnee['K'], GAINSKnee['B'], GAINSKnee['FF'])
+        FX.set_gains(devId[1], GAINSAnk['kp'], GAINSAnk['ki'], 0, GAINSAnk['K'], GAINSAnk['B'], GAINSAnk['FF'])
+
+        # Send Motor Command
+        FX.send_motor_command(devId[0], fxe.FX_IMPEDANCE, motDesKnee)
+        FX.send_motor_command(devId[1], fxe.FX_IMPEDANCE, motDesAnk)
+
+        # Delay
+        sleep(osl.dtCenti)
 
 except Exception as error:
 
+    # Print Error
     print(error)
 
 finally:
 
-    opcl.devClose()
+    # Gracefully Exit Script by Closing Stream and Device ID
+    opcl.devClose(devId, FX)
