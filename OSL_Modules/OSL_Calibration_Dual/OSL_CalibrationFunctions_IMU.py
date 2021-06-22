@@ -118,8 +118,8 @@ def accelCal(devId, FX):
 
     # Initialize Counter and Averages
     count = 0
-    x_avg = 0
-    y_avg = 0
+    xBias = 0
+    yBias = 0
 
     while count < (3*osl.sec10)/osl.dtMilli:
 
