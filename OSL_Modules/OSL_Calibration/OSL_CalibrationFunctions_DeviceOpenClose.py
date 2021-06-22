@@ -2,22 +2,25 @@
 ##################################### OPEN #####################################
 This package holds the functions for opening and closing the actuators for single actuator configuration configuration
 
-Last Update: 16 June 2021
+Last Update: 21 June 2021
 Updates:
-    - Removed unnecessary imports, updated comments
-    - Fixed syntax errors regarding FX class object and imports
+    - Improved Comments and Documentation
+    - Updated delays to use parameters from OSL_Constants
 #################################### CLOSE #####################################
 '''
 
 #################################### IMPORTS ###################################
 
+# Imports for Standard Python
 from time import sleep, time, strftime
 import os, sys
 import math
 
-# Actuator Modules (Most Start with fx)
+# Imports for FlexSEA
 from flexsea import fxUtils as fxu
 from flexsea import fxEnums as fxe
+
+from OSL_Modules.OSL_Calibration import OSL_Constants as osl
 
 ############################# FUNCTION DEFINITIONS #############################
 
@@ -31,29 +34,29 @@ def devOpen(FX):
         devId - List of device ids for future use with FX functions
     '''
 
-    # Find directory
+    # Set Directory Where Desired File Exists
     scriptPath = os.path.dirname(os.path.abspath(__file__))
     fpath = scriptPath + '/Ports_Single.yaml'
 
-    # Load ports and baudrate from file
+    # Load Ports and Baudrate
     ports, baudRate = fxu.load_ports_from_file(fpath)
 
-    # Print ports and baudrate values loaded, convert to proper data types
-    print(ports,'\n',baudRate)
+    # Convert Ports and Baudrate to Correct Data Type
     port = str(ports[0])
     baudRate=int(baudRate)
     debugLvl=6
 
-    # Open device to grab device id and set debug level
-    devId = FX.open(port,baudRate,debugLvl)
+    # Open Device ID
+    devId = FX.open(port, baudRate, debugLvl)
 
-    # Start streaming data to/from opened device
-    FX.start_streaming(devId,freq=100,log_en=False)
-    sleep(0.1)
+    # Start Streaming Device ID
+    FX.start_streaming(devId, freq=100, log_en=False)
+    sleep(osl.dtCenti)
 
+    # Return Device ID
     return devId
 
-def devClose(devId,FX):
+def devClose(devId, FX):
 
     '''
     Function for closing streams to Dephy actuators
@@ -64,19 +67,21 @@ def devClose(devId,FX):
         None
     '''
 
-    # Disable the controller, send 0 PWM
+    # Send Motor Command to Stop
     FX.send_motor_command(devId, fxe.FX_VOLTAGE, 0)
-    sleep(0.05)
+    sleep(5*osl.dtCenti)
 
-    # Stop streaming to device
+    # Close Stream To Device ID
     FX.stop_streaming(devId)
-    sleep(0.05)
+    sleep(5*osl.dtCenti)
 
-    # Close device fully
+    # Close Device ID
     FX.close(devId)
-    sleep(0.05)
+    sleep(5*osl.dtCenti)
 
     print('Graceful Exit Completed')
+
+############################# MAIN FUN DEFINITIONS #############################
 
 def main():
 

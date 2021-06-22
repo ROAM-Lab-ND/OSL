@@ -2,43 +2,55 @@
 ##################################### OPEN #####################################
 This package holds the functions for dumping and loading calibration data to yaml files for future use with the Open Source Leg (OSL)
 
-Last Update: 8 June 2021
+Last Update: 21 June 2021
 Updates:
-    - Updated import file path location for OSL_Calibration
+    - Improved Comments and Documentation
 #################################### CLOSE #####################################
 '''
 
 #################################### IMPORTS ###################################
 
+# Imports for Standard Python
 from time import sleep, time, strftime
 import math
 import numpy as np
 import yaml
 
-# Actuator Modules (Most Start with fx)
+# Imports for FlexSEA
 from flexsea import flexsea as fx
 from flexsea import fxEnums as fxe
+
+# Imports for OSL
 from OSL_Modules.OSL_Calibration import OSL_Constants as osl
 
 ############################# FUNCTION DEFINITIONS #############################
 
-def calDump(calData,dev,cal=2):
+def calDump(calData, dev):
 
     '''
     Function for dumping calibration data to the proper yaml file for future use
     Inputs:
         calData - Class structure storing the calibration data to save
         dev - Calibration data joint (0 for Knee, 1 for Ankle)
+    Outputs:
+        None
     '''
 
+    # Open Appropriate File Based On Device ID
     if dev == osl.devKnee:
-        pFile = open('Knee_Cal.yaml','w')
-    elif dev == osl.devAnk:
-        pFile = open('Ankle_Cal.yaml','w')
-    else:
-        raise Exception('Invalid joint option for data dump')
 
-    pDoc = yaml.dump(calData,pFile,Dumper=yaml.Dumper)
+        pFile = open('Knee_Cal.yaml','w')
+
+    elif dev == osl.devAnk:
+
+        pFile = open('Ankle_Cal.yaml','w')
+
+    else:
+
+        raise RuntimeError('Invalid joint option for data dump')
+
+    # Dump Calibration Data to File and Close
+    pDoc = yaml.dump(calData, pFile, Dumper = yaml.Dumper)
     pFile.close()
 
 def calLoad(dev):
@@ -51,6 +63,7 @@ def calLoad(dev):
         calData - Class structure storing the calibration data
     '''
 
+    # Open Appropriate File Based on Device ID
     if dev == osl.devKnee:
 
         pFile = open('Knee_Cal.yaml')
@@ -61,12 +74,16 @@ def calLoad(dev):
 
     else:
 
-        raise Exception('Invalid joint option for data load')
+        raise RuntimeError('Invalid joint option for data load')
 
-    calData = yaml.load(pFile,Loader=yaml.Loader)
+    # Load Data From File and Close
+    calData = yaml.load(pFile, Loader = yaml.Loader)
     pFile.close()
 
+    # Return Calibration Data
     return calData
+
+############################# MAIN FUN DEFINITIONS #############################
 
 def main(dev):
 

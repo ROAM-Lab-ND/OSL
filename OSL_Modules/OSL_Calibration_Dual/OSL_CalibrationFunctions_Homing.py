@@ -2,155 +2,180 @@
 ##################################### OPEN #####################################
 This package holds the functions called for homing the knee and ankle actuators of the Open Source Leg (OSL) to vertical orientation.
 
-Last Update: 8 June 2021
+Last Update: 21 June 2021
 Updates:
-    - Created dualHomeJoint for homing ankle joint with external encoder data
-    - Updated dualHomeMot to correctly base ankDiffM off of vertical orientation value
-    - Updated main() to use finally tag for proper syntax of closing actuator streams
+    - Improved Comments and Documentation
+    - Updated delays to use parameters from OSL_Constants
 #################################### CLOSE #####################################
 '''
 
 #################################### IMPORTS ###################################
 
+# Imports for Standard Python
 from time import sleep, time, strftime
 import math
 import numpy as np
 import yaml
 
-# Actuator Modules (Most Start with fx)
+# Imports for FlexSEA
 from flexsea import flexsea as fx
 from flexsea import fxEnums as fxe
+
+# Imports for OSL
 from OSL_Modules.OSL_Calibration_Dual import OSL_Constants as osl
+from OSL_Modules.OSL_Calibration_Dual import OSL_CalibrationFunctions_DeviceOpenClose as opcl
 
 ################################# CALIBRATION ##################################
 
-def kneeHome(devId,FX,volt=750):
+def kneeHome(devId, FX, volt = 400):
 
     '''
-    This function is used to return the knee actuator angle to the zero degree mark in a safe manner.
-
-    Note that the zero degree mark is located at a mechanical hard stop for the knee.  Therefore, the voltage commanded to the motor should not change signs. The voltage command is kept relatively low to prevent extending beyond the mechanical hard stop and snapping back slightly short of zero degrees.
+    Function for returning knee joint of Open Source Leg (OSL) to vertical orientation safely
+    Inputs:
+        devId - Device ID of actuator
+        FX - Class object with flexSEA Dephy functions for reading actuator data
+        volt - Voltage value to run motor at
+    Outputs:
+        None
     '''
 
+    # Alert User Actuator is About to Run
     print('Running Actuator...')
-    sleep(0.3)
+    sleep(osl.dtDeci)
 
-    # Start running motor at inputted voltage
+    # Send Motor Command
     FX.send_motor_command(devId, fxe.FX_VOLTAGE, volt)
 
-    # Grab Current Encoder Value
+    # Read Current Motor Information and Grab Encoder
     actData = FX.read_device(devId)
     angCur = actData.mot_ang
 
-    # Boolean for tracking when to cut the motor
+    # Initialize Boolean for Calibration Sequence
     run = True
 
     while run:
 
-        sleep(0.01)
-
-        # Set Tracking Angle to Previously Measured Angle
+        # Set Encoder Historical Data
         angPrev = angCur
 
-        # Grab Current Angle Value and Print to Screen
+        # Read Current Motor Information and Grab Encoder
         actData = FX.read_device(devId)
         angCur = actData.mot_ang
 
-        # Calculate Difference between Tracking Angle and Current Angle
+        # Calculate Difference Between Previous and Current Encoder
         angDiff = angCur - angPrev
 
-        # If calculated difference is smaller than half a degree movement, the
-        # limit has been reached
+        # Delay
+        sleep(osl.dtCenti)
 
+        # If Motor Rotation is Below Threshold, System is at Hard Stop
         if abs(angDiff) <= osl.deg2count/2:
 
-            # Set motor voltage to zero to stop the actuator
+            # Send Motor Command to Stop
             FX.send_motor_command(devId, fxe.FX_VOLTAGE, 0)
 
-            # Grab final encoder value reading
-            actData = FX.read_device(devId)
-            angFinal = actData.mot_ang
-
-            # Set boolean to exit loop
+            # Set Run Flag to False
             run = False
             print('Homing Complete')
 
 def ankleHomeJoint(devId,FX,angVertJ,volt=400,valReturn=1):
 
     '''
-    This function is used to return the ankle actuator angle to the vertical degree mark in a safe manner.  Returns vertical angle motor value (ticks).
-
-    NOTE: THIS SHOULD NOT BE CALLED BEFORE COMPLETING THE ANGLE CALIRATION FOR THE ANKLE. THE CALIBRATION FUNCTIONS CAN BE FOUND IN OSL_CalibrationFunctions_Angle.py
+    Function for returning ankle joint of Open Source Leg (OSL) to vertical orientation safely. Outputs vertical orientation motor encoder value if flagged. This form uses the external motor encoder
+    Inputs:
+        devId - Device ID of actuator
+        FX - Class object with flexSEA Dephy functions for reading actuator data
+        angVertJ - External encoder value at vertical orientation
+        volt - Voltage value to run motor at
+        valReturn - Flag whether to return vertical orientation motor encoder
+    Outputs:
+        angVertM - Motor encoder value at vertical orientation
     '''
 
+    # Alert User Actuator is About to be Run
     print('Running Actuator...')
-    sleep(0.3)
+    sleep(osl.dtDeci)
 
-    # Grab Current Encoder Value
+    # Read Current Motor Information and Grab Encoder
     actData = FX.read_device(devId)
     angCur = actData.ank_ang
 
+    # Set Appropriate Voltage Based On Current Angle
     if angCur < angVertJ:
 
         volt = abs(volt)
+
     else:
 
         volt = -abs(volt)
 
+    # Initialize Boolean for Calibration Sequence
+    run = True
 
-    # Start running motor at inputted voltage
+    # Send Motor Command
     FX.send_motor_command(devId, fxe.FX_VOLTAGE, volt)
 
-    run = True
+    # Delay
+    sleep(osl.dtCenti)
 
     while run:
 
-        sleep(0.01)
-
-        # Grab encoder angle value
+        # Read Current Motor Information and Grab Encoder
         actData = FX.read_device(devId)
         motVal = actData.mot_ang
         jointVal = actData.ank_ang
 
-        # Calculate uncalibrated difference between tracking and current angle
+        # Calculate Difference Between Vertical and Current Encoder
         jointDiff = jointVal - angVertJ
 
-        # Print current calibrated angle value in degrees and radians to screen
-        print('%-15s %-7f %-15s %-7f %-7f' % ('Current Motor:',motVal,'Current Ankle:',jointVal,jointDiff))
+        # Print Information to User
+        print('%-15s %-7f %-15s %-7f %-7f' % ('Current Motor:', motVal, 'Current Ankle:', jointVal, jointDiff))
 
-        # If calculated difference is smaller than half a degree movement, the
-        # limit has been reached
+        # Delay
+        sleep(osl.dtCenti)
+
+        # If Joint Angle is at Vertical Orientation, Stop
         if abs(jointDiff) <= 2*osl.deg2count:
 
-            # Set motor voltage to zero to stop the motor
+            # Send Motor Command to Stop
             FX.send_motor_command(devId, fxe.FX_VOLTAGE, 0)
 
-            # Grab encoder angle value (need uncalibrated value angVal for later)
+            # Read Current Motor Information and Grab Encoder
             actData = FX.read_device(devId)
             angVertM = actData.mot_ang
 
-            # Set boolean to exit the loop
+            # Set Run Flag to False
             run = False
             print('Vertical Homing Complete')
 
+    # If Value Flag Set, Return Vertical Orientation Motor Encoder
     if valReturn:
+
         return angVertM
 
 def ankleHomeMot(devId,FX,angVertM,volt=350,valReturn=1):
 
     '''
-    This function is used to return the ankle actuator angle to the vertical degree mark in a safe manner. Returns vertical angle joint value (ticks).
-
-    NOTE: THIS SHOULD NOT BE CALLED BEFORE COMPLETING THE ANGLE CALIRATION FOR THE ANKLE. THE CALIBRATION FUNCTIONS CAN BE FOUND IN OSL_CalibrationFunctions_Angle.py
+    Function for returning ankle joint of Open Source Leg (OSL) to vertical orientation safely. Outputs vertical orientation joint encoder value if flagged. This form uses the internal motor encoder
+    Inputs:
+        devId - Device ID of actuators
+        FX - Class object with flexSEA Dephy functions for reading actuator data
+        angVertM - Internal encoder value at vertical orientation
+        volt - Voltage value to run motor at
+        valReturn - Flag whether to return vertical orientation motor encoder
+    Outputs:
+        angVertJ - Joint encoder value at vertical orientation
     '''
 
+    # Alert User Actuator is About to be Run
     print('Running Actuator...')
-    sleep(0.3)
+    sleep(osl.dtDeci)
 
-    # Grab Current Encoder Value
+    # Read Current Motor Information and Grab Encoder
     actData = FX.read_device(devId)
     angCur = actData.mot_ang
 
+    # Set Appropriate Voltage Based On Current Angle
     if angCur < angVertM:
 
         volt = abs(volt)
@@ -159,58 +184,76 @@ def ankleHomeMot(devId,FX,angVertM,volt=350,valReturn=1):
 
         volt = -abs(volt)
 
+    # Initialize Boolean for Calibration Sequence
+    run = True
 
-    # Start running motor at inputted voltage
+    # Send Motor Command
     FX.send_motor_command(devId, fxe.FX_VOLTAGE, volt)
 
-    sleep(0.05)
-
-    run = True
+    # Delay
+    sleep(osl.dtCenti)
 
     while run:
 
-        sleep(0.01)
-
-        # Grab encoder angle value
+        # Read Current Motor Information and Grab Encoder
         actData = FX.read_device(devId)
         motVal = actData.mot_ang
+        jointVal = actData.ank_ang
 
-        # Calculate uncalibrated difference between tracking and current angle
+        # Calculate Difference Between Vertical and Current Encoder
         motDiff = motVal - angVertM
 
-        # Print current calibrated angle value in degrees and radians to screen
-        print('%-15s %-7f %-7f' % ('Current Motor:',motVal,motDiff))
+        # Print Information to User
+        print('%-15s %-7f %-15s %-7f %-7f' % ('Current Motor:', motVal, 'Current Ankle:', jointVal, motDiff))
 
-        # If calculated difference is smaller than half a degree movement, the
-        # limit has been reached
+        # Delay
+        sleep(osl.dtCenti)
+
+        # If Motor Angle is at Vertical Orientation, Stop
         if abs(motDiff) <= 2*osl.deg2count:
 
-            # Set motor voltage to zero to stop the motor
+            # Send Motor Command to Stop
             FX.send_motor_command(devId, fxe.FX_VOLTAGE, 0)
 
-            # Grab encoder angle value (need uncalibrated value angVal for later)
+            # Read Current Motor Information and Grab Encoder
             actData = FX.read_device(devId)
             angVertJ = actData.ank_ang
 
-            # Set boolean to exit the loop
+            # Set Run Flag to False
             run = False
             print('Vertical Homing Complete')
 
+    # If Value Flag Set, Return Vertical Orientation Motor Encoder
     if valReturn:
+
         return angVertJ
 
-def dualHomeMot(devId,FX,angVertM,valReturn=1,volt=400):
+def dualHomeMot(devId, FX, angVertM, valReturn=1, volt=400):
 
-    print('Running Actuators...')
-    sleep(0.3)
+    '''
+    Function for returning knee and ankle joints of Open Source Leg (OSL) to vertical orientation safely. Outputs vertical orientation joint encoder value if flagged. This form uses the internal motor encoder
+    Inputs:
+        devId - Device ID of actuators
+        FX - Class object with flexSEA Dephy functions for reading actuator data
+        angVertM - Internal encoder value at vertical orientation
+        valReturn - Flag whether to return vertical orientation motor encoder
+        volt - Voltage value to run motor at
+    Outputs:
+        angVertJ - Joint encoder value at vertical orientation
+    '''
 
-    # Start running motor at inputted voltage for knee
+    # Alert User Actuator is About to be Run
+    print('Running Actuator...')
+    sleep(osl.dtDeci)
+
+    # Send Motor Command (Knee)
     FX.send_motor_command(devId[0], fxe.FX_VOLTAGE, abs(volt))
 
-    # Grab Current Encoder Value for Ankle
+    # Read Current Motor Information and Grab Encoder (Ankle)
     actDataAnk = FX.read_device(devId[1])
     angCurAnk = actDataAnk.mot_ang
 
+    # Set Appropriate Voltage Based On Current Encoder (Ankle)
     if angCurAnk < angVertM:
 
         volt = abs(volt)
@@ -219,89 +262,107 @@ def dualHomeMot(devId,FX,angVertM,valReturn=1,volt=400):
 
         volt = -abs(volt)
 
-    # Start running motor at inputted voltage for knee
+    # Send Motor Command (Ankle)
     FX.send_motor_command(devId[1], fxe.FX_VOLTAGE, abs(volt))
 
-    # Grab Current Encoder Value
+    # Read Current Motor Information and Grab Encoder
     actDataKnee = FX.read_device(devId[0])
     actDataAnk = FX.read_device(devId[1])
 
     angCurKnee = actDataKnee.mot_ang
     angCurAnk = actDataAnk.mot_ang
 
-    # Boolean for tracking when to cut the motor
+    # Initialize Boolean for Calibration Sequence
     runKnee = True
     runAnk = True
     run = True
 
-    sleep(0.05)
+    # Delay
+    sleep(osl.dtCenti)
 
     while run:
 
-        sleep(0.01)
-
-        # Set Tracking Angle to Previously Measured Angle
+        # Set Encoder Historical Data
         angPrevKnee = angCurKnee
         angPrevAnk = angCurAnk
 
-        # Grab Current Encoder Value
+        # Read Current Motor Information and Grab Encoder
         actDataKnee = FX.read_device(devId[0])
         actDataAnk = FX.read_device(devId[1])
 
         angCurKnee = actDataKnee.mot_ang
         angCurAnk = actDataAnk.mot_ang
 
-        # Calculate Difference between Tracking Angle and Current Angle
+        # Calculate Difference Between Previous and Current Encoder
         angDiffKnee = angCurKnee - angPrevKnee
         angDiffAnk = angCurAnk - angVertM
 
-        # If calculated difference is smaller than half a degree movement, the
-        # limit has been reached
+        sleep(osl.dtCenti)
+
+        # If Motor Rotation is Below Threshold, Knee is at Hard Stop
         if (abs(angDiffKnee) <= osl.deg2count/2) and (runKnee):
 
-            # Set motor voltage to zero to stop the actuator
+            # Send Motor Command to Stop
             FX.send_motor_command(devId[0], fxe.FX_VOLTAGE, 0)
 
-            # Grab final encoder value reading
+            # Read Current Motor Information and Grab Encoder
             actDataKnee = FX.read_device(devId[0])
             angFinalKnee = actDataKnee.mot_ang
 
-            # Set boolean to exit loop
+            # Set (Knee) Run Flag to False
             runKnee = False
 
+        # If Motor Angle is at Vertical Orientation, Stop
         if (abs(angDiffAnk) <= 2*osl.deg2count) and (runAnk):
 
-            # Set motor voltage to zero to stop the actuator
+            # Send Motor Command to Stop
             FX.send_motor_command(devId[1], fxe.FX_VOLTAGE, 0)
 
-            # Grab final encoder value reading
+            # Read Current Motor Information and Grab Encoder
             actDataAnk = FX.read_device(devId[1])
-            angFinalMAnk = actDataAnk.mot_ang
             angFinalJAnk = actDataAnk.ank_ang
 
-            # Set boolean to exit loop
+            # Set (Ankle) Run Flag to False
             runAnk = False
 
+        # If Knee and Ankle Run Flags Not Set, All Hard Stops Reached
         if (not runKnee) and (not runAnk):
 
+            # Set Run Flag to False
             run = False
 
+    # If Value Flag Set, Return Vertical Orientation Joint Encoder
     if valReturn:
+
         return angFinalJAnk
 
 def dualHomeJoint(devId,FX,angVertJ,valReturn=1,volt=400):
 
-    print('Running Actuators...')
-    sleep(0.3)
+    '''
+    Function for returning knee and ankle joints of Open Source Leg (OSL) to vertical orientation safely. Outputs vertical orientation motor encoder value if flagged. This form uses the external motor encoder
+    Inputs:
+        devId - Device ID of actuator
+        FX - Class object with flexSEA Dephy functions for reading actuator data
+        angVertJ - External encoder value at vertical orientation
+        volt - Voltage value to run motor at
+        valReturn - Flag whether to return vertical orientation motor encoder
+    Outputs:
+        angVertM - Motor encoder value at vertical orientation
+    '''
 
-    # Start running motor at inputted voltage for knee
+    # Alert User Actuator is About to be Run
+    print('Running Actuator...')
+    sleep(osl.dtDeci)
+
+    # Send Motor Command (Knee)
     FX.send_motor_command(devId[0], fxe.FX_VOLTAGE, abs(volt))
 
-    # Grab Current Encoder Value for Ankle
+    # Read Current Motor Information and Grab Encoder (Ankle)
     actDataAnk = FX.read_device(devId[1])
-    angCurAnk = actDataAnk.ank_ang
+    angCurAnk = actDataAnk.mot_ang
 
-    if angCurAnk < angVertJ:
+    # Set Appropriate Voltage Based On Current Encoder (Ankle)
+    if angCurAnk < angVertM:
 
         volt = abs(volt)
 
@@ -309,75 +370,81 @@ def dualHomeJoint(devId,FX,angVertJ,valReturn=1,volt=400):
 
         volt = -abs(volt)
 
-    # Start running motor at inputted voltage for knee
+    # Send Motor Command (Ankle)
     FX.send_motor_command(devId[1], fxe.FX_VOLTAGE, abs(volt))
 
-    # Grab Current Encoder Value
+    # Read Current Motor Information and Grab Encoder
     actDataKnee = FX.read_device(devId[0])
     actDataAnk = FX.read_device(devId[1])
 
     angCurKnee = actDataKnee.mot_ang
-    angCurAnk = actDataAnk.ank_ang
+    angCurAnk = actDataAnk.mot_ang
 
-    # Boolean for tracking when to cut the motor
+    # Initialize Boolean for Calibration Sequence
     runKnee = True
     runAnk = True
     run = True
 
-    sleep(0.05)
+    sleep(osl.dtCenti)
 
     while run:
 
-        sleep(0.01)
-
-        # Set Tracking Angle to Previously Measured Angle
+        # Set Encoder Historical Data
         angPrevKnee = angCurKnee
         angPrevAnk = angCurAnk
 
-        # Grab Current Encoder Value
+        # Read Current Motor Information and Grab Encoder
         actDataKnee = FX.read_device(devId[0])
         actDataAnk = FX.read_device(devId[1])
 
         angCurKnee = actDataKnee.mot_ang
         angCurAnk = actDataAnk.ank_ang
 
-        # Calculate Difference between Tracking Angle and Current Angle
+        # Calculate Difference Between Previous and Current Encoder
         angDiffKnee = angCurKnee - angPrevKnee
         angDiffAnk = angCurAnk - angVertJ
 
-        # If calculated difference is smaller than half a degree movement, the
-        # limit has been reached
+        # Delay
+        sleep(osl.dtCenti)
+
+        # If Motor Rotation is Below Threshold, Knee is at Hard Stop
         if (abs(angDiffKnee) <= osl.deg2count/2) and (runKnee):
 
-            # Set motor voltage to zero to stop the actuator
+            # Send Motor Command to Stop
             FX.send_motor_command(devId[0], fxe.FX_VOLTAGE, 0)
 
-            # Grab final encoder value reading
+            # Read Current Motor Information and Grab Encoder
             actDataKnee = FX.read_device(devId[0])
             angFinalKnee = actDataKnee.mot_ang
 
-            # Set boolean to exit loop
+            # Set (Knee) Run Flag to False
             runKnee = False
 
+        # If Motor Angle is at Vertical Orientation, Stop
         if (abs(angDiffAnk) <= 2*osl.deg2count) and (runAnk):
 
-            # Set motor voltage to zero to stop the actuator
+            # Send Motor Command to Stop
             FX.send_motor_command(devId[1], fxe.FX_VOLTAGE, 0)
 
-            # Grab final encoder value reading
+            # Read Current Motor Information and Grab Encoder
             actDataAnk = FX.read_device(devId[1])
             angFinalMAnk = actDataAnk.mot_ang
-            angFinalJAnk = actDataAnk.ank_ang
 
-            # Set boolean to exit loop
+            # Set (Ankle) Run Flag to False
             runAnk = False
 
+        # If Knee and Ankle Run Flags Not Set, All Hard Stops Reached
         if (not runKnee) and (not runAnk):
 
+            # Set Run Flag to False
             run = False
 
+    # If Value Flag Set, Return Vertical Orientation Joint Encoder
     if valReturn:
+
         return angFinalMAnk
+
+############################# MAIN FUN DEFINITIONS #############################
 
 def main(dev):
 
@@ -385,87 +452,50 @@ def main(dev):
     For standalone calling of the Homing functions
     '''
 
-    #import numpy as np
-    thisdir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    sys.path.append(thisdir)
-
-    # Find directory
-    scriptPath = os.path.dirname(os.path.abspath(__file__))
-
-    fpath = scriptPath + '/Ports_Dual.yaml'
-
-    ports, baudRate = fxu.load_ports_from_file(fpath)
-
-    # Standard setup that is not crucial for understanding the script
-    print(ports,'\n',baudRate)
-    baudRate=int(baudRate)
-    debugLvl=6
-
-    # Connect to actuator and open data stream
+    # Create Class Object for Actuator Commands
     FX = fx.FlexSEA()
 
-    devId1 = FX.open(port1,baudRate,debugLvl)
-    devId2 = FX.open(port2,baudRate,debugLvl)
-
-    if devId1 == osl.devKnee:
-        devId = [devId1,devId2]
-    else:
-        devId = [devId2,devId1]
-
-    FX.start_streaming(devId[0],freq=100,log_en=False)
-    FX.start_streaming(devId[1],freq=100,log_en=False)
-    sleep(0.1)
+    # Open Device ID and Start Streaming
+    devId = opcl.devOpen(FX)
 
     try:
 
         if dev == 0:
 
             pFile = open('Knee_Cal.yaml')
-            calData = yaml.load(pFile, Loader=yaml.Loader)
+            calData = yaml.load(pFile, Loader = yaml.Loader)
             pFile.close()
-            kneeHome(devId[0],FX)
+
+            kneeHome(devId[0], FX)
 
         elif dev == 1:
 
             pFile = open('Ankle_Cal.yaml')
-            calData = yaml.load(pFile, Loader=yaml.Loader)
+            calData = yaml.load(pFile, Loader = yaml.Loader)
             pFile.close()
-            ankleHomeMot(devId[1],FX,calData.angVertMotAnk,valReturn=0)
+
+            ankleHomeMot(devId[1], FX, calData.angVertMotAnk, valReturn = 0)
 
         elif dev == 2:
 
             pFile = open('Dual_Cal.yaml')
             calData = yaml.load(pfile, Loader=yaml.Loader)
             pFile.close()
-            dualHomeMot(devId,FX,calData.angVertMotAnk,valReturn=0)
+
+            dualHomeMot(devId, FX, calData.angVertMotAnk, valReturn=0)
 
         else:
 
-            raise Exception('Invalid choice for joint chosen')
+            raise RuntimeError('Invalid Choice')
 
     except Exception as error:
 
         print('Error Occurred')
         print(error)
 
-        sleep(0.05)
-        # Disable the controller, send 0 PWM
-        FX.send_motor_command(devId[0], fxe.FX_VOLTAGE, 0)
-        sleep(0.05)
-        FX.send_motor_command(devId[1], fxe.FX_VOLTAGE, 0)
-        sleep(0.05)
-
     finally:
 
-        FX.stop_streaming(devId[0])
-        sleep(0.05)
-        FX.stop_streaming(devId[1])
-        sleep(0.05)
-        FX.close(devId[0])
-        sleep(0.05)
-        FX.close(devId[1])
-        sleep(0.05)
-        print("Graceful Exit Complete")
+        opcl.devClose(devId, FX)
 
 if __name__ == '__main__':
 

@@ -2,25 +2,27 @@
 ##################################### OPEN #####################################
 This package holds the functions for checking the charge of the batteries used for the Open Source Leg (OSL) actuators and avoid use at dangerous voltage levels
 
-Last Update: 18 June 2021
+Last Update: 21 June 2021
 Updates:
-    - Created
+    - Improved Comments and Documentation
 #################################### CLOSE #####################################
 '''
 
 #################################### IMPORTS ###################################
 
+# Imports for Standard Python
 from time import sleep, time, strftime
 
+# Imports for FlexSEA
 from flexsea import flexsea as fx
 
-# Actuator Modules (Most Start with fx)
+# Imports for OSL
 from OSL_Modules.OSL_Calibration import OSL_Constants as osl
 from OSL_Modules.OSL_Calibration import OSL_CalibrationFunctions_DeviceOpenClose as opcl
 
 ############################# FUNCTION DEFINITIONS #############################
 
-def voltCheck(devId,FX):
+def voltCheck(devId, FX):
 
     '''
     Function for checking the voltage being supplied to the motor from the batteries.
@@ -31,14 +33,17 @@ def voltCheck(devId,FX):
         None
     '''
 
+    # Read Current Motor Information and Grab Battery Voltage
     actData = FX.read_device(devId)
     voltBat = actData.batt_volt
 
+    # If Voltage Below Warning Threshold, Send Warning
     if voltBat < osl.voltThresh:
 
-        voltWarn(devId,voltBat)
+        voltWarn(devId, voltBat)
 
-    if voltBat < osl.voltThresh - 1000:
+    # If Voltage Well Below Warning Threshold, Initiate Shutdown Sequence
+    if voltBat < osl.voltThresh - 500:
 
         voltShutOff(devId)
 
@@ -54,6 +59,7 @@ def voltWarn(devId, volt):
         None
     '''
 
+    # Device Classifier
     if devId == osl.devKnee:
 
         devName = 'KNEE'
@@ -62,6 +68,7 @@ def voltWarn(devId, volt):
 
         devName = 'ANKLE'
 
+    # Print Warning That Battery Voltage Is Running Low
     print('WARNING: UVLO THRESHOLD TRIGGERED FOR ', devName, 'ACTUATOR')
     print('UVLO THRESHOLD: ', osl.voltThresh, '  ', devName, 'VOLTAGE: ', volt)
 
@@ -75,6 +82,7 @@ def voltShutOff(devId):
         None
     '''
 
+    # Voltage Classifier
     if devId == osl.devKnee:
 
         devName = 'KNEE'
@@ -83,10 +91,12 @@ def voltShutOff(devId):
 
         devName = 'ANKLE'
 
+    # Print Warning
     print('WARNING: VOLTAGE TOO LOW FOR ', devName, 'ACTUATOR')
 
     count = 5
 
+    # Initiate Five Second Countdown Before Raising Exception
     while count:
 
         print('SHUTTING DOWN ACTUATOR IN: ', count, 'SEC')
@@ -94,24 +104,30 @@ def voltShutOff(devId):
 
         sleep(osl.dtSec)
 
+    # Raise Exception
     raise RuntimeError('UVLO Triggered')
 
-def main(devId,FX):
+############################# MAIN FUN DEFINITIONS #############################
+
+def main(devId, FX):
 
     try:
 
         while True:
 
-            voltCheck(devId,FX)
+            # Check Voltage Seen By Device
+            voltCheck(devId, FX)
             sleep(0.1)
 
     except Exception as error:
 
+        # Print Error
         print(error)
 
     finally:
 
-        opcl.devClose(devId,FX)
+        # Gracefully Exit Script by Closing Stream and Device ID
+        opcl.devClose(devId, FX)
 
 if __name__ == '__main__':
 
@@ -119,4 +135,4 @@ if __name__ == '__main__':
 
     devId = opcl.devOpen(FX)
 
-    main(devId,FX)
+    main(devId, FX)

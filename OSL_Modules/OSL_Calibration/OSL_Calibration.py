@@ -2,79 +2,70 @@
 ##################################### OPEN #####################################
 This script allows for testing the calibration of the ankle or knee of the Open Source Leg (OSL) without having to move the calibration yaml file locations
 
-Last Update: 8 June 2021
+Last Update: 21 June 2021
 Updates:
-    - Updated import file path location for OSL_Calibration
+    - Improved Comments and Documentation
+    - Updated main function to use OSL_CalibrationFunctions_DeviceOpenClose for opening and closing devices
 #################################### CLOSE #####################################
 '''
 
 ############################### PACKAGE IMPORTS ################################
-# Standard Python Modules
+
+# Imports for Standard Python
 from time import sleep, time, strftime
 import os, sys
 import math
 import numpy as np
-import scipy as sp
-import yaml
 
-# Actuator Modules (Most Start with fx)
+# Imports for FlexSEA
 from flexsea import flexsea as fx
 from flexsea import fxUtils as fxu
 from flexsea import fxEnums as fxe
 
+# Imports for OSL
 from OSL_Modules.OSL_Calibration import OSL_Constants as osl
 from OSL_Modules.OSL_Calibration import OSL_Calibration_Package as pac
+from OSL_Modules.OSL_Calibration import OSL_CalibrationFunctions_DeviceOpenClose as opcl
 
 #################################### SETUP #####################################
-# Find directory
-scriptPath = os.path.dirname(os.path.abspath(__file__))
-fpath = scriptPath + '/Ports_Single.yaml'
-#print('Path: ',fpath)
-ports, baudRate = fxu.load_ports_from_file(fpath)
 
-# Standard setup that is not crucial for understanding the script
-print(ports,'\n',baudRate)
-port = str(ports[0])
-baudRate=int(baudRate)
-debugLvl=6
-
-# Connect to actuator and open data stream
+# Create Class Object for Actuator Commands
 FX = fx.FlexSEA()
 
-devId = FX.open(port,baudRate,debugLvl)
-FX.start_streaming(devId,freq=100,log_en=False)
-sleep(0.1)
+# Open Device ID and Start Streaming
+devId = opcl.devOpen(FX)
 
+# Initialize Calibration Data Class Object
 calData = pac.CalDataSingle()
 
-dev = int(input('Which device do you want to calibrate? (0 for Knee, 1 for Ankle): '))
+# Let User Define Which Calibration Sequence to Run
 cal = int(input('What do you want to calibrate? (0 for IMU, 1 for Angle, 2 for Both): '))
+
+############################# CALIBRATION SEQUENCE #############################
 
 try:
 
-    if dev == 0:
-        pac.kneeCal(devId,FX,calData,cal)
-    elif dev == 1:
-        pac.ankleCalMot(devId,FX,calData,cal)
+    # Choose Appropriate Calibration Process Based On Device ID
+    if devId == osl.devKnee:
+
+        pac.kneeCal(devId, FX, calData, cal)
+
+    elif devId == osl.devAnk:
+
+        pac.ankleCalMot(devId, FX, calData, cal)
+
     else:
-        raise Exception('Invalid device chosen...')
+
+        raise RuntimeError('Invalid device ID. Check device ID and compare with OSL_Constants.py stored values.')
 
 except Exception as error:
 
+    # Print Error
     print(error)
 
 finally:
 
-    # Disable the controller, send 0 PWM
-    sleep(0.05)
-    FX.send_motor_command(devId, fxe.FX_VOLTAGE, 0)
-    sleep(0.05)
-
-    FX.stop_streaming(devId)
-    sleep(0.05)
-    FX.close(devId)
-    sleep(0.1)
-
-    print("Graceful Exit Complete")
+    # Gracefully Exit Script by Closing Stream and Device ID
+    opcl.devClose(devId, FX)
 
 print('Script Complete')
