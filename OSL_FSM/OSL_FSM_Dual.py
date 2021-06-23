@@ -37,6 +37,7 @@ from OSL_Modules.OSL_Calibration_Dual import OSL_CalibrationFunctions_DeviceOpen
 from OSL_Modules.OSL_4Bar_Dual import OSL_4BarFunctions_Mapping as four
 from OSL_Modules.OSL_Force_Dual import OSL_ForceFunctions_Full as pres
 from OSL_Modules.OSL_Torque_Dual import OSL_TorqueFunctions_StiffnessDamping as tor
+from OSL_Modules.OSL_Battery_Dual import OSL_BatteryFunctions_UVLO as bat
 
 #################################### SETUP #####################################
 
