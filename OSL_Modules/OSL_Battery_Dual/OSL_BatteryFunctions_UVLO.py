@@ -55,7 +55,7 @@ def voltCheck(devId, FX):
 
         voltShutOff(devId[0])
 
-    if voltBatAnk < osl.voltThres - 500:
+    if voltBatAnk < osl.voltThresh - 500:
 
         voltShutOff(devId[1])
 
