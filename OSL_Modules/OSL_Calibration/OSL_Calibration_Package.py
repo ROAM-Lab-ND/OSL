@@ -86,7 +86,7 @@ class CalDataSingle:
 
 ############################# FUNCTION DEFINITIONS #############################
 
-def kneeCal(devId, FX, calData, cal=2):
+def kneeCal(devId, FX, calData, cal = 2):
 
     '''
     Function for calibrating the knee module and storing the calibration data in a class object

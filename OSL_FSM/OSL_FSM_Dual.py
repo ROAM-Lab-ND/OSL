@@ -37,6 +37,7 @@ from OSL_Modules.OSL_Calibration_Dual import OSL_CalibrationFunctions_DeviceOpen
 from OSL_Modules.OSL_4Bar_Dual import OSL_4BarFunctions_Mapping as four
 from OSL_Modules.OSL_Force_Dual import OSL_ForceFunctions_Full as pres
 from OSL_Modules.OSL_Torque_Dual import OSL_TorqueFunctions_StiffnessDamping as tor
+from OSL_Modules.OSL_Battery_Dual import OSL_BatteryFunctions_UVLO as bat
 
 #################################### SETUP #####################################
 
@@ -101,7 +102,7 @@ dampKnee = (0, 0, 0, 0.0012, 0.0012)
 dampAnk = (0.001, 0.0003, 0.00015, 0.0003, 0.0003)
 
 # Equilibrium Positions Relative to Vertical Orientation
-equilKnee = (0, 2, 2, 50, 2)
+equilKnee = (0, 2, 2, 80, 2)
 equilAnk = (0, -5, 5, 0, 0) # (DF (-), PF (+))
 
 # Weight of User (kg)
@@ -137,7 +138,10 @@ threshForceOff = 8
 threshDF = -10
 
 # Angular Velocity Threshold (Rad/Sec) for Late Swing Trigger
-threshRot = 0.3
+threshRot = 3
+
+# Flexion Threshold (Degrees) for Late Swing Trigger
+threshFlex = 60
 
 # Initializing Force Sensor Readings for Current/Previous Time Steps
 pad0Val = pad0ValPrev1 = pad0ValPrev2 = pad1Val = pad1ValPrev1 = pad1ValPrev2  = 0
@@ -147,7 +151,7 @@ pad0ValMax = pad1ValMax = 0
 firstPass = True
 
 # Battery Checking Threshold (sec)
-minBatCheck = 60
+minBatCheck = 50
 batTime = datetime.datetime.now()
 
 # Early Stance Duration Threshold (msec)
@@ -185,7 +189,7 @@ try:
         actDataAnk = FX.read_device(devId[1])
 
         motKnee = actDataKnee.mot_ang
-        jointKnee = (motKnee - calData.angExtMot[0])/calData.bpdMot[0]
+        motKneeDeg = (motKnee - calData.angExtMot[0])/calData.bpdMot[0]
 
         motAnk = actDataAnk.mot_ang
 
@@ -193,21 +197,19 @@ try:
         jointAnk = four.anklePosMappingMot(motAnk, calData)
         TR[1] = four.ankleTRMappingMot(motAnk, calData)
 
-        # Calculate Current Angular Velocity of Thigh
-        gyroKnee = (actDataKnee.gyroz*osl.deg2rad)/osl.gyroConv - calData.gyro
-        diffMotKnee = ((motKnee - motKneePrev)*osl.deg2rad)/calData.bpdMot[0]
+        # Calculate Current Angular Velocity of Thigh and Knee
+        gyroKnee = ((actDataKnee.gyroz - calData.gyro)/osl.gyroConv)*osl.deg2rad
+        diffMotKneeDeg = (motKnee - motKneePrev)/calData.bpdMot[0]
 
-        rotKnee = gyroKnee + diffMotKnee/osl.dtCenti
+        rotThighRad = gyroKnee + (diffMotKneeDeg/osl.dtCenti)*osl.deg2rad
+        rotKneeDeg = diffMotKneeDeg/osl.dtCenti
+        rotKneeRad = rotKneeDeg*osl.deg2rad
 
         if stateCur == 0:
 
             # Print State
             stateName = 'Unspecified'
             print(stateName)
-
-            # Calculate Desired Motor Damping
-            desBKnee = tor.motDamping(usrWeight, dampKnee[stateCur], TR[0])
-            desBAnk = tor.motDamping(usrWeight, dampAnk[stateCur], TR[1])
 
             # If Force Sensors Surpass Threshold, Transition to State 1
             if pres.forceOn(pad0Val, pad0ValPrev1, pad0ValPrev2, threshForceOn) or pres.forceOn(pad1Val, pad1ValPrev1, pad1ValPrev2, threshForceOn):
@@ -221,10 +223,6 @@ try:
             stateName = 'Early Stance'
             print(stateName)
 
-            # Calculate Desired Motor Damping
-            desBKnee = 1000
-            desBAnk = 1000
-
             # If First Entry into State 1, Grab Instance of Entry
             if firstPass:
 
@@ -235,10 +233,12 @@ try:
             # If Time in State 1 Below Threshold, Print Time Spent So Far
             if (datetime.datetime.now() - firstPassTime).seconds == 0 and (datetime.datetime.now() - firstPassTime).microseconds/1000 < minEarlyStance:
 
-                print((datetime.datetime.now() - firstPassTime).microseconds/1000)
                 if pad0Val > pad0ValMax:
+
                         pad0ValMax = pad0Val
+
                 if pad1Val > pad1ValMax:
+
                         pad1ValMax = pad1Val
 
             # If Time in State 1 Surpasses Threshold, Check Ankle Angle
@@ -258,17 +258,13 @@ try:
             if pres.forceOff(pad0Val, pad0ValPrev1, threshForceOff) and pres.forceOff(pad1Val, pad1ValPrev1, threshForceOff):
 
                 stateCur = STATES[3]
-                print('Transitioning to Swing!')
+                print('Transitioning to Early Swing')
 
         elif stateCur == 2:
 
             # Print State
             stateName = 'Late Stance'
             print(stateName)
-
-            # Hardcoded Desired Ankle Damping (Will Be Changed)
-            desBKnee = 2000
-            desBAnk = 2000
 
             # If Force Sensors Below Threshold, Transition to State 3
             if pres.forceOff(pad0Val, pad0ValPrev1, threshForceOff) and pres.forceOff(pad1Val, pad1ValPrev1, threshForceOff):
@@ -282,10 +278,6 @@ try:
             stateName = 'Early Swing'
             print(stateName)
 
-            # Hardcoded Desired Ankle Damping (Will Be Changed)
-            desBKnee = 1000
-            desBAnk = 1000
-
             # If Force Sensors Surpass Threshold, Transition to State 1
             if pres.forceOn(pad0Val, pad0ValPrev1, pad0ValPrev2, threshForceOn) or pres.forceOn(pad1Val, pad1ValPrev1, pad1ValPrev2, threshForceOn):
 
@@ -294,7 +286,7 @@ try:
                 print('Transitioning to Early Stance')
 
             # If Rotation of Thigh Surpasses Threshold, Transition to State 4
-            if rotKnee < -threshRot:
+            if (rotKnee < -threshRot) and (motKneeDeg > threshFlex):
 
                 stateCur = STATES[4]
                 print('Transitioning to Late Swing')
@@ -304,10 +296,6 @@ try:
             # Print State
             stateName = 'Late Swing'
             print(stateName)
-
-            # Hardcoded Desired Ankle Damping (Will Be Changed)
-            desBKnee = 1000
-            desBAnk = 1000
 
             # If Force Sensors Surpass Threshold, Transition to State 1
             if pres.forceOn(pad0Val, pad0ValPrev1, pad0ValPrev2, threshForceOn) or pres.forceOn(pad1Val, pad1ValPrev1, pad1ValPrev2, threshForceOn):
@@ -319,6 +307,10 @@ try:
         # Calculate Desired Motor Stiffness
         desKKnee = tor.motStiffness(usrWeight, stiffKnee[stateCur], TR[0])
         desKAnk = tor.motStiffness(usrWeight, stiffAnk[stateCur], TR[1])
+
+        # Calculate Desired Motor Damping
+        desBKnee = tor.motDamping(usrWeight, dampKnee[stateCur], TR[0])
+        desBAnk = tor.motDamping(usrWeight, dampAnk[stateCur], TR[1])
 
         # Calculate Desired Motor Encoder Value
         motDesKnee = calData.angExtMot[0] - calData.bpdMot[0]*equilKnee[stateCur]
@@ -335,6 +327,9 @@ try:
         # Send Motor Command
         FX.send_motor_command(devId[0], fxe.FX_IMPEDANCE, motDesKnee)
         FX.send_motor_command(devId[1], fxe.FX_IMPEDANCE, motDesAnk)
+
+        # Print Information to User
+        print('Gyroscope: ', gyroKnee, '\nJoint Rotation: ', diffMotKnee, '\nThigh Velocity: ', rotKnee)
 
         # Delay
         sleep(osl.dtCenti)

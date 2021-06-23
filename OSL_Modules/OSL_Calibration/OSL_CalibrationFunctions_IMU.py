@@ -2,11 +2,9 @@
 ##################################### OPEN #####################################
 This package holds the functions called by OSL_Calibration_Package.py to calibrate the IMU sensor in the Dephy actuator
 
-Last Update: 21 June 2021
+Last Update: 23 June 2021
 Updates:
-    - Improved Comments and Documentation
-    - Updated delays to use parameters from OSL_Constants
-    - Updated ankleVertAccelCal to accelCalVert
+    - Changed calibration processes to be completed on raw bits
 #################################### CLOSE #####################################
 '''
 
@@ -18,6 +16,7 @@ import math
 import numpy as np
 
 # Imports for FlexSEA
+from flexsea import flexsea as fx
 from flexsea import fxEnums as fxe
 
 # Imports for OSL
@@ -54,7 +53,7 @@ def gyroCal(devId, FX):
 
         # Read Current Motor Information and Grab Gyroscope
         actData = FX.read_device(devId)
-        gyroZ = (actData.gyroz*osl.deg2rad)/osl.gyroConv
+        gyroZ = actData.gyroz
 
         # Calculate Running Average Bias
         gyroBias = (gyroBias*(count - 1) + gyroZ)/count
@@ -65,7 +64,7 @@ def gyroCal(devId, FX):
         # Delay
         sleep(osl.dtMilli)
 
-    print('Running Visual Confirmation Test')
+    print('Running Confirmation Test (Converted to Rad/Sec)')
     print('%-8s %-15s %-15s' % ('Count', 'Gyro Z Value', 'Average'))
     sleep(5*osl.dtDeci)
 
@@ -80,10 +79,10 @@ def gyroCal(devId, FX):
 
         # Read Current Motor Information and Grab Gyroscope
         actData = FX.read_device(devId)
-        gyroZ = (actData.gyroz*osl.deg2rad)/osl.gyroConv
+        gyroZ = actData.gyroz
 
         # Calculate Bias Corrected Gyroscope and Average
-        calCur = gyroZ - gyroBias
+        calCur = ((gyroZ - gyroBias)*osl.deg2rad)/osl.gyroConv
         calAvg = (calAvg*(count - 1) + calCur)/count
 
         # Print Information to User
@@ -95,7 +94,7 @@ def gyroCal(devId, FX):
     print('Gyro Calibration Complete')
 
     # Return Gyroscope Calibration
-    return float(gyroBias)
+    return gyroBias
 
 def accelCal(devId, FX):
 
@@ -126,8 +125,8 @@ def accelCal(devId, FX):
 
         # Read Current Motor Information and Grab x-Axis, y-Axis Accelerometer
         actData = FX.read_device(devId)
-        xAccel = actData.accelx/osl.accelConv
-        yAccel = actData.accely/osl.accelConv
+        xAccel = actData.accelx
+        yAccel = actData.accely
 
         # Calculate Running Average Bias
         xBias = (xBias*(count - 1) + xAccel)/count
@@ -139,7 +138,7 @@ def accelCal(devId, FX):
         # Delay
         sleep(osl.dtMilli)
 
-    print('Running Visual Confirmation Test')
+    print('Running Confirmation Test (Converted to Gs)')
     print('%-5s %-10s %-10s' % ('Count', 'AccelX', 'AccelY'))
     sleep(5*osl.dtDeci)
 
@@ -153,12 +152,12 @@ def accelCal(devId, FX):
 
         # Read Current Motor Information and Grab x-Axis, y-Axis Accelerometer
         actData = FX.read_device(devId)
-        xAccel = actData.accelx/osl.accelConv
-        yAccel = actData.accely/osl.accelConv
+        xAccel = actData.accelx
+        yAccel = actData.accely
 
         # Calculate Bias Corrected x-Axis, y-Axis Accelerometer
-        xCal = xAccel - xBias
-        yCal = yAccel - yBias
+        xCal = (xAccel - xBias)/osl.accelConv
+        yCal = (yAccel - yBias)/osl.accelConv
 
         # Print Information to User
         print('%-5i %-10f %-10f' % (count, xCal, yCal))
@@ -169,7 +168,7 @@ def accelCal(devId, FX):
     print('Accel Calibration Complete')
 
     # Return Acceleromater Calibration
-    return float(xBias), float(yBias)
+    return xBias, yBias
 
 def accelCalVert(devId, FX):
 
@@ -200,8 +199,8 @@ def accelCalVert(devId, FX):
 
         # Read Current Motor Information and Grab x-Axis, y-Axis Accelerometer
         actData = FX.read_device(devId)
-        xAccel = actData.accelx/osl.accelConv
-        yAccel = 1 - actData.accely/osl.accelConv
+        xAccel = actData.accelx
+        yAccel = osl.accelConv - actData.accely
 
         # Calculate Running Average Bias
         xBias = (xBias*(count - 1) + xAccel)/count
@@ -213,7 +212,7 @@ def accelCalVert(devId, FX):
         # Delay
         sleep(osl.dtMilli)
 
-    print('Running Visual Confirmation Test')
+    print('Running Confirmation Test (Converted to Gs)')
     print('%-5s %-10s %-10s' % ('Count', 'AccelX', 'AccelY'))
     sleep(5*osl.dtDeci)
 
@@ -227,8 +226,8 @@ def accelCalVert(devId, FX):
 
         # Read Current Motor Information and Grab x-Axis, y-Axis Accelerometer
         actData = FX.read_device(devId)
-        xAccel = actData.accelx/osl.accelConv
-        yAccel = 1 - actData.accely/osl.accelConv
+        xAccel = actData.accelx
+        yAccel = osl.accelConv - actData.accely
 
         # Calculate Bias Corrected x-Axis, y-Axis Accelerometer
         xCal = xAccel - xBias
@@ -243,7 +242,7 @@ def accelCalVert(devId, FX):
     print('Accel Calibration Complete')
 
     # Return Accelerometer Calibration
-    return float(xBias), float(yBias)
+    return xBias, yBias
 
 ############################# MAIN FUN DEFINITIONS #############################
 
@@ -265,7 +264,13 @@ def main():
 
         calData.gyro = gyroCal(devId, FX)
 
-        xBias,yBias = accelCal(devId, FX)
+        if devId == osl.devKnee:
+
+            xBias, yBias = accelCal(devId, FX)
+
+        elif devId == osl.devAnk:
+
+            xBias, yBias = accelCalVert(devId, FX)
 
         calData.xAccel = xBias
         calData.yAccel = yBias

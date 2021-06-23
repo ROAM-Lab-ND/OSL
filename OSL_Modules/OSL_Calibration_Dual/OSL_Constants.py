@@ -50,4 +50,4 @@ devAnk = 14449
 
 # Battery Voltage Threshold (mV) and Checking Rate (min)
 batCheckRate = 1
-voltThresh = 28000
+threshBat = 28000

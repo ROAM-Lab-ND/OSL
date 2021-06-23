@@ -103,7 +103,7 @@ def angleZero(devId, FX, volt):
     # Return Encoder Hard Stop Values
     return motFinal, jointFinal
 
-def angleCal(devId, FX, volt=750):
+def angleCal(devId, FX, volt = 400):
 
     '''
     Function for calibrating angle-related data for knee or ankle of Open Source Leg (OSL).

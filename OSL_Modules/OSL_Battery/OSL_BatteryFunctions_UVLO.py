@@ -38,12 +38,12 @@ def voltCheck(devId, FX):
     voltBat = actData.batt_volt
 
     # If Voltage Below Warning Threshold, Send Warning
-    if voltBat < osl.voltThresh:
+    if voltBat < osl.threshBat:
 
         voltWarn(devId, voltBat)
 
     # If Voltage Well Below Warning Threshold, Initiate Shutdown Sequence
-    if voltBat < osl.voltThresh - 500:
+    if voltBat < osl.threshBat - 500:
 
         voltShutOff(devId)
 

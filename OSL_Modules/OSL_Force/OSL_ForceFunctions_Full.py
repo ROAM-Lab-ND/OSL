@@ -90,7 +90,7 @@ def forceOff(padValCur, padValPrev, thresh):
     padVal = [padValCur,padValPrev]
 
     # Set Intent Flag Based On Force Sensor History
-    intent = all( i > thresh for i in padVal)
+    intent = all( i < thresh for i in padVal)
 
     # Return Intent Flag
     return intent
